@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>AgriTrack Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+        // Simple password protection
+        const correctPassword = "JoeMama09092345739"; 
+        
+        // Ask for password
+        const enteredPassword = prompt("🔐 Enter Admin Password:");
+        
+        // Check password
+        if (enteredPassword === null) {
+            // User clicked "Cancel"
+            alert("Access cancelled");
+            window.location.href = "index.html";
+        } else if (enteredPassword !== correctPassword) {
+            // Wrong password
+            alert("❌ Incorrect password. Access denied.");
+            window.location.href = "index.html";
+        }
+        // If correct password, do nothing - page continues loading
+    </script>
+  <!-- REMOVED: Resend SDK import -->
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+      background-color: #4caf50;
+      border-radius: 3px;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    .crop-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    }
+    .rice { background-color: #f0e68c; color: #8b4513; }
+    .corn { background-color: #ffd700; color: #8b4513; }
+    .banana { background-color: #fffacd; color: #556b2f; }
+    .vegetables { background-color: #90ee90; color: #006400; }
+    .other { background-color: #d3d3d3; color: #696969; }
+    
+    /* Toast notification styles */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    .toast.success { background-color: #10b981; }
+    .toast.error { background-color: #ef4444; }
+    .toast.info { background-color: #3b82f6; }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #10b981;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="flex items-center justify-between bg-white shadow-md px-4 py-3 sticky top-0 z-30">
+    <div class="flex items-center space-x-3">
+      <img alt="AgriTrack logo" class="w-10 h-10 rounded" src="https://storage.googleapis.com/a1aa/image/60da8445-2c71-4459-1a35-cda5b126ab3b.jpg"/>
+      <h1 class="text-xl font-semibold text-green-700 select-none">Farm Data Submissions</h1>
+    </div>
+    <div class="flex items-center space-x-3 text-gray-700">
+      <span class="hidden sm:inline text-lg font-medium">👋 Admin</span>
+      <img alt="Admin profile" class="w-10 h-10 rounded-full object-cover" src="https://storage.googleapis.com/a1aa/image/c80b97c7-9f0b-4fcb-4460-e1a1ae75a70d.jpg"/>
+    </div>
+  </header>
+  
+  <div class="flex flex-1 overflow-hidden">
+    <!-- Sidebar -->
+    <nav aria-label="Sidebar Navigation" class="sidebar-scroll bg-white w-64 border-r border-gray-200 flex flex-col overflow-y-auto transition-transform duration-300 ease-in-out fixed inset-y-0 left-0 z-40 md:static md:translate-x-0 -translate-x-full" id="sidebar">
+      <div class="flex flex-col h-full">
+        <ul class="mt-6 space-y-1 px-4">
+          <li>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-md text-green-700 bg-green-100 font-semibold shadow-sm nav-link active" href="#dashboard" data-section="dashboard">
+              <i class="fas fa-chart-bar"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center justify-between gap-3 px-3 py-2 rounded-md text-gray-700 hover:bg-green-50 hover:text-green-700 transition nav-link" href="#pending" data-section="pending">
+              <div class="flex items-center gap-3">
+                <i class="fas fa-hourglass-half"></i>
+                <span>Pending</span>
+              </div>
+              <span class="inline-block bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full select-none" id="pendingCount">0</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-md text-gray-700 hover:bg-green-50 hover:text-green-700 transition nav-link" href="#approved" data-section="approved">
+              <i class="fas fa-check-circle"></i>
+              <span>Approved</span>
+            </a>
+          </li>
+          <li>
+            <a class="flex items-center gap-3 px-3 py-2 rounded-md text-gray-700 hover:bg-green-50 hover:text-green-700 transition nav-link" href="#farmers" data-section="farmers">
+              <i class="fas fa-users"></i>
+              <span>Farmers</span>
+            </a>
+          </li>
+        </ul>
+        <div class="mt-auto px-4 py-4 text-xs text-gray-400 select-none">© 2024 AgriTrack</div>
+      </div>
+    </nav>
+    
+    <!-- Mobile sidebar toggle button -->
+    <button aria-label="Toggle sidebar" class="fixed bottom-6 right-6 z-50 md:hidden bg-green-600 hover:bg-green-700 text-white p-3 rounded-full shadow-lg focus:outline-none focus:ring-2 focus:ring-green-400" id="mobileSidebarToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+    
+    <!-- Main content -->
+    <main class="flex-1 overflow-y-auto p-6 md:ml-64">
+      <!-- Dashboard Home -->
+      <section class="mb-10 dashboard-section section" id="dashboard">
+        <h2 class="text-2xl font-semibold text-green-800 mb-6 select-none">Farm Data Overview</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div aria-label="Pending submissions" class="bg-white rounded-lg shadow-md p-5 flex items-center space-x-4 border-l-8 border-yellow-400" role="region">
+            <div class="text-yellow-500 text-3xl"><i class="fas fa-hourglass-half"></i></div>
+            <div>
+              <p class="text-3xl font-bold text-gray-900" id="dashboardPending">0</p>
+              <p class="text-gray-600 font-medium">Pending Submissions</p>
+            </div>
+          </div>
+          <div aria-label="Approved submissions" class="bg-white rounded-lg shadow-md p-5 flex items-center space-x-4 border-l-8 border-green-500" role="region">
+            <div class="text-green-500 text-3xl"><i class="fas fa-check-circle"></i></div>
+            <div>
+              <p class="text-3xl font-bold text-gray-900" id="dashboardApproved">0</p>
+              <p class="text-gray-600 font-medium">Approved Farms</p>
+            </div>
+          </div>
+          <div aria-label="Registered farmers" class="bg-white rounded-lg shadow-md p-5 flex items-center space-x-4 border-l-8 border-blue-500" role="region">
+            <div class="text-blue-500 text-3xl"><i class="fas fa-users"></i></div>
+            <div>
+              <p class="text-3xl font-bold text-gray-900" id="dashboardFarmers">0</p>
+              <p class="text-gray-600 font-medium">Registered Farmers</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-lg shadow-md p-5">
+            <h3 class="text-lg font-semibold text-green-700 mb-4">Crop Distribution</h3>
+            <div class="h-64 flex items-center justify-center text-gray-500" id="cropChart">
+              <div class="text-center">
+                <i class="fas fa-seedling text-4xl mb-2 text-green-400"></i>
+                <p>Crop distribution chart will appear here</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white rounded-lg shadow-md p-5">
+            <h3 class="text-lg font-semibold text-green-700 mb-4">Recent Activity</h3>
+            <div class="space-y-4" id="recentActivity">
+              <div class="flex items-center justify-center h-40 text-gray-500">
+                <div class="text-center">
+                  <i class="fas fa-clock text-3xl mb-2 text-green-400"></i>
+                  <p>Recent activity will appear here</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pending Submissions Section -->
+      <section class="mb-10 pending-section section hidden" id="pending">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 class="text-2xl font-semibold text-green-800 mb-3 sm:mb-0 select-none">Pending Farm Submissions</h2>
+          <form aria-label="Search and filter submissions" class="flex flex-col sm:flex-row sm:items-center gap-3" role="search">
+            <input aria-label="Search by farmer name" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="searchFarmer" placeholder="Search farmer" type="text"/>
+            <select aria-label="Filter by barangay" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="filterBarangay">
+              <option value="">All Barangays</option>
+              <option value="Bagong Silang">Bagong Silang</option>
+              <option value="Bahi">Bahi</option>
+              <option value="Cambagang">Cambagang</option>
+              <option value="Coronobe">Coronobe</option>
+              <option value="Katipunan">Katipunan</option>
+              <option value="Lahi">Lahi</option>
+              <option value="Langgawisan">Langgawisan</option>
+              <option value="Mabugnao">Mabugnao</option>
+              <option value="Magcagong">Magcagong</option>
+              <option value="Mahayahay">Mahayahay</option>
+              <option value="Mapawa">Mapawa</option>
+              <option value="Maragusan (Pob.)">Maragusan (Pob.)</option>
+              <option value="Mauswagon">Mauswagon</option>
+              <option value="New Albay">New Albay</option>
+              <option value="New Katipunan">New Katipunan</option>
+              <option value="New Manay">New Manay</option>
+              <option value="New Panay">New Panay</option>
+              <option value="Paloc">Paloc</option>
+              <option value="Pamintaran">Pamintaran</option>
+              <option value="Parasanon">Parasanon</option>
+              <option value="Talian">Talian</option>
+              <option value="Tandik">Tandik</option>
+              <option value="Tigbao">Tigbao</option>
+              <option value="Tupas">Tupas</option>
+            </select>
+            <select aria-label="Filter by crop type" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="filterCropType">
+              <option value="">All Crops</option>
+              <option value="Rice">Rice</option>
+              <option value="Corn">Corn</option>
+              <option value="Banana">Banana</option>
+              <option value="Vegetables">Vegetables</option>
+            </select>
+            <input aria-label="Filter by date" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="filterDate" type="date"/>
+          </form>
+        </div>
+        
+        <div class="overflow-x-auto rounded-lg shadow-md bg-white">
+          <table aria-label="Pending submissions table" class="min-w-full divide-y divide-gray-200" role="table">
+            <thead class="bg-green-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Farmer</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Email</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Barangay</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Crop Type</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Land Area</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Ownership</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Terrain</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Submitted</th>
+                <th class="px-4 py-3 text-center text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100" id="submissionTableBody">
+              <tr>
+                <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+                  <div class="flex flex-col items-center">
+                    <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
+                    <p>No pending submissions found</p>
+                    <p class="text-sm">Submissions will appear here as farmers submit data</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-4 flex justify-between items-center">
+          <div class="text-sm text-gray-600" id="paginationInfo">Showing 0 of 0 submissions</div>
+          <div class="flex space-x-2">
+            <button id="prevPage" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50" disabled>Previous</button>
+            <button id="nextPage" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50" disabled>Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Approved Submissions Section -->
+      <section class="mb-10 approved-section section hidden" id="approved">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 class="text-2xl font-semibold text-green-800 mb-3 sm:mb-0 select-none">Approved Farm Data</h2>
+          <form aria-label="Search approved farms" class="flex flex-col sm:flex-row sm:items-center gap-3" role="search">
+            <input aria-label="Search by farmer name" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="searchApprovedFarmer" placeholder="Search farmer" type="text"/>
+            <select aria-label="Filter by barangay" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-48" id="filterApprovedBarangay">
+              <option value="">All Barangays</option>
+              <option value="Bagong Silang">Bagong Silang</option>
+              <option value="Bahi">Bahi</option>
+              <option value="Cambagang">Cambagang</option>
+              <option value="Coronobe">Coronobe</option>
+              <option value="Katipunan">Katipunan</option>
+              <option value="Lahi">Lahi</option>
+              <option value="Langgawisan">Langgawisan</option>
+              <option value="Mabugnao">Mabugnao</option>
+              <option value="Magcagong">Magcagong</option>
+              <option value="Mahayahay">Mahayahay</option>
+              <option value="Mapawa">Mapawa</option>
+              <option value="Maragusan (Pob.)">Maragusan (Pob.)</option>
+              <option value="Mauswagon">Mauswagon</option>
+              <option value="New Albay">New Albay</option>
+              <option value="New Katipunan">New Katipunan</option>
+              <option value="New Manay">New Manay</option>
+              <option value="New Panay">New Panay</option>
+              <option value="Paloc">Paloc</option>
+              <option value="Pamintaran">Pamintaran</option>
+              <option value="Parasanon">Parasanon</option>
+              <option value="Talian">Talian</option>
+              <option value="Tandik">Tandik</option>
+              <option value="Tigbao">Tigbao</option>
+              <option value="Tupas">Tupas</option>
+            </select>
+          </form>
+        </div>
+        
+        <div class="overflow-x-auto rounded-lg shadow-md bg-white">
+          <table aria-label="Approved farms table" class="min-w-full divide-y divide-gray-200" role="table">
+            <thead class="bg-green-50">
+              <tr>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Farmer</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Barangay</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Crop Type</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Land Area</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Area Planted</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Planted</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Harvest</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100" id="approvedTableBody">
+              <tr>
+                <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                  <div class="flex flex-col items-center">
+                    <i class="fas fa-check-circle text-4xl text-gray-300 mb-2"></i>
+                    <p>No approved submissions yet</p>
+                    <p class="text-sm">Approved farm data will appear here</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="mt-4 flex justify-end">
+          <button id="exportApprovedBtn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400">
+            <i class="fas fa-download mr-2"></i>Export to CSV
+          </button>
+        </div>
+      </section>
+
+      <!-- Farmers Management Section -->
+      <section class="mb-10 farmers-section section hidden" id="farmers">
+        <h2 class="text-2xl font-semibold text-green-800 mb-6 select-none">Registered Farmers</h2>
+        <div class="bg-white rounded-lg shadow-md p-6">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h3 class="text-xl font-semibold text-green-700 select-none">Farmer List</h3>
+            <input aria-label="Search farmers" class="px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400 w-full sm:w-64" id="searchFarmers" placeholder="Search farmers" type="text"/>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table aria-label="Farmers table" class="min-w-full divide-y divide-gray-200" role="table">
+              <thead class="bg-green-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Name</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Email</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Barangay</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Registered</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Status</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-green-700 uppercase tracking-wider select-none" scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100" id="farmersTableBody">
+                <tr>
+                  <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                    <div class="flex flex-col items-center">
+                      <i class="fas fa-users text-4xl text-gray-300 mb-2"></i>
+                      <p>No registered farmers found</p>
+                      <p class="text-sm">Farmer data will appear here</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Detail View Modal -->
+  <div aria-labelledby="detailModalTitle" aria-modal="true" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden" id="detailModal" role="dialog">
+    <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
+      <button aria-label="Close detail view" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 rounded" id="closeModalBtn">
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <h3 class="text-xl font-semibold text-green-800 mb-4 select-none" id="detailModalTitle">Farm Submission Details</h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div>
+          <h4 class="text-green-700 font-semibold mb-2">Farmer Information</h4>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <div class="flex items-center mb-3">
+              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
+                <i class="fas fa-user text-green-600"></i>
+              </div>
+              <div>
+                <p class="font-medium" id="detailFarmerName">Loading...</p>
+                <p class="text-sm text-gray-600" id="detailFarmerContact">Contact information</p>
+              </div>
+            </div>
+            <div class="space-y-2 text-sm">
+              <p><span class="font-medium">Email:</span> <span id="detailEmail">Loading...</span></p>
+              <p><span class="font-medium">Barangay:</span> <span id="detailBarangay">Loading...</span></p>
+              <p><span class="font-medium">Submitted:</span> <span id="detailSubmitted">Loading...</span></p>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h4 class="text-green-700 font-semibold mb-2">Farm Details</h4>
+          <div class="bg-gray-50 p-4 rounded-lg">
+            <div class="space-y-2 text-sm">
+              <p><span class="font-medium">Total Land Area:</span> <span id="detailLandArea">Loading...</span></p>
+              <p><span class="font-medium">Area Planted:</span> <span id="detailAreaPlanted">Loading...</span></p>
+              <p><span class="font-medium">Ownership:</span> <span id="detailOwnership">Loading...</span></p>
+              <p><span class="font-medium">Terrain:</span> <span id="detailTerrain">Loading...</span></p>
+              <p><span class="font-medium">Crop Type:</span> <span id="detailCropType">Loading...</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <button class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-red-400" id="rejectBtn">
+          Reject
+        </button>
+        <button class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400" id="approveBtn">
+          Approve
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div aria-labelledby="confirmModalTitle" aria-modal="true" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden" id="confirmModal" role="dialog">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+      <button aria-label="Close confirmation modal" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 rounded" id="closeConfirmModalBtn">
+        <i class="fas fa-times fa-lg"></i>
+      </button>
+      <h3 class="text-xl font-semibold text-green-800 mb-4 select-none" id="confirmModalTitle">Confirm Action</h3>
+      <p class="text-gray-700 mb-6" id="confirmModalMessage">Are you sure you want to perform this action?</p>
+      <div class="flex justify-end space-x-3">
+        <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-gray-400" id="cancelConfirmBtn">
+          Cancel
+        </button>
+        <button class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400" id="confirmActionBtn">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer"></div>
+
+<script>
+  // Initialize Supabase
+  const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  // Application state
+  let submissions = [];
+  let approvedSubmissions = [];
+  let farmers = [];
+  let currentPage = 1;
+  const itemsPerPage = 10;
+  let currentDetailId = null;
+  let pendingAction = null;
+
+  // DOM elements
+  const elements = {
+    mobileSidebarToggle: document.getElementById("mobileSidebarToggle"),
+    sidebar: document.getElementById("sidebar"),
+    dashboardPending: document.getElementById("dashboardPending"),
+    dashboardApproved: document.getElementById("dashboardApproved"),
+    dashboardFarmers: document.getElementById("dashboardFarmers"),
+    pendingCount: document.getElementById("pendingCount"),
+    cropChart: document.getElementById("cropChart"),
+    recentActivity: document.getElementById("recentActivity"),
+    submissionTableBody: document.getElementById("submissionTableBody"),
+    searchFarmer: document.getElementById("searchFarmer"),
+    filterBarangay: document.getElementById("filterBarangay"),
+    filterCropType: document.getElementById("filterCropType"),
+    filterDate: document.getElementById("filterDate"),
+    paginationInfo: document.getElementById("paginationInfo"),
+    prevPage: document.getElementById("prevPage"),
+    nextPage: document.getElementById("nextPage"),
+    approvedTableBody: document.getElementById("approvedTableBody"),
+    searchApprovedFarmer: document.getElementById("searchApprovedFarmer"),
+    filterApprovedBarangay: document.getElementById("filterApprovedBarangay"),
+    exportApprovedBtn: document.getElementById("exportApprovedBtn"),
+    farmersTableBody: document.getElementById("farmersTableBody"),
+    searchFarmers: document.getElementById("searchFarmers"),
+    detailModal: document.getElementById("detailModal"),
+    closeModalBtn: document.getElementById("closeModalBtn"),
+    approveBtn: document.getElementById("approveBtn"),
+    rejectBtn: document.getElementById("rejectBtn"),
+    detailFarmerName: document.getElementById("detailFarmerName"),
+    detailFarmerContact: document.getElementById("detailFarmerContact"),
+    detailBarangay: document.getElementById("detailBarangay"),
+    detailEmail: document.getElementById("detailEmail"),
+    detailSubmitted: document.getElementById("detailSubmitted"),
+    detailLandArea: document.getElementById("detailLandArea"),
+    detailOwnership: document.getElementById("detailOwnership"),
+    detailTerrain: document.getElementById("detailTerrain"),
+    detailCropType: document.getElementById("detailCropType"),
+    detailAreaPlanted: document.getElementById("detailAreaPlanted"),
+    confirmModal: document.getElementById("confirmModal"),
+    closeConfirmModalBtn: document.getElementById("closeConfirmModalBtn"),
+    cancelConfirmBtn: document.getElementById("cancelConfirmBtn"),
+    confirmActionBtn: document.getElementById("confirmActionBtn"),
+    confirmModalMessage: document.getElementById("confirmModalMessage"),
+    toastContainer: document.getElementById("toastContainer")
+  };
+
+  // Utility functions
+  function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  }
+
+  function formatNumber(num) {
+    if (typeof num !== 'number') return num;
+    return num.toLocaleString();
+  }
+
+  function getCropIcon(cropType) {
+    if (!cropType) return '<span class="crop-icon other"><i class="fas fa-leaf fa-xs"></i></span>';
+    const cropClass = cropType.toLowerCase().replace(/\s+/g, '_');
+    return `<span class="crop-icon ${cropClass}"><i class="fas fa-leaf fa-xs"></i></span>`;
+  }
+
+  function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    elements.toastContainer.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // SIMPLE EMAIL FUNCTION USING FETCH
+  async function sendEmailNotification(email, subject, message) {
+    try {
+      console.log('Would send email:', { email, subject, message });
+      return true;
+    } catch (error) {
+      console.error('Email error:', error);
+      return false;
+    }
+  }
+
+  // REAL SUPABASE DATA FUNCTIONS - UPDATED FOR NEW STATUS SYSTEM
+  async function fetchPendingSubmissions() {
+    try {
+      console.log('Fetching pending submissions from Supabase...');
+      
+      const { data: farms, error } = await supabase
+        .from('farms')
+        .select(`
+          id,
+          land_area,
+          area_unit,
+          ownership_type,
+          terrain_type,
+          farm_status,
+          created_at,
+          farmers!farmer_id (
+            id,
+            full_name,
+            email,
+            barangay
+          ),
+          crops(*)
+        `)
+        .eq('farm_status', 'pending')  // CRITICAL: Only get pending farms
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase farms error:', error);
+        throw error;
+      }
+
+      console.log('Pending farms:', farms);
+      return farms || [];
+      
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      showToast('Error loading submissions: ' + error.message, 'error');
+      return [];
+    }
+  }
+
+  async function fetchApprovedSubmissions() {
+    try {
+      const { data: farms, error } = await supabase
+        .from('farms')
+        .select(`
+          id,
+          land_area,
+          area_unit,
+          ownership_type,
+          terrain_type,
+          farm_status,
+          verified_at,
+          created_at,
+          farmers!farmer_id (
+            id,
+            full_name,
+            barangay
+          ),
+          crops(*)
+        `)
+        .eq('farm_status', 'approved')  // CRITICAL: Only get approved farms
+        .order('verified_at', { ascending: false });
+
+      if (error) throw error;
+
+      const approvedFarms = farms.map(farm => {
+        const primaryCrop = farm.crops?.[0];
+        return {
+          id: farm.id,
+          farmer_name: farm.farmers.full_name,
+          barangay: farm.farmers.barangay,
+          land_area: farm.land_area,
+          area_unit: farm.area_unit,
+          crop_type: primaryCrop?.crop_type || 'Multiple Crops',
+          area_planted: primaryCrop?.area_planted || 0,
+          planted_area_unit: primaryCrop?.planted_area_unit || 'hectares',
+          date_planted: primaryCrop?.date_planted,
+          harvest_date: primaryCrop?.expected_harvest_date,
+          approved_at: farm.verified_at,
+          crop_count: farm.crops?.length || 0
+        };
+      });
+
+      return approvedFarms;
+    } catch (error) {
+      console.error('Error fetching approved submissions:', error);
+      showToast('Error loading approved data', 'error');
+      return [];
+    }
+  }
+
+  async function fetchFarmers() {
+    try {
+      const { data, error } = await supabase
+        .from('farmers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Error fetching farmers:', error);
+      showToast('Error loading farmers', 'error');
+      return [];
+    }
+  }
+
+  // REAL APPROVAL/REJECTION FUNCTIONS - UPDATED FOR NEW STATUS SYSTEM
+  async function approveSubmission(id) {
+    try {
+      console.log('Approving submission:', id);
+      
+      const submission = submissions.find(sub => sub.id === id);
+      if (!submission) {
+        throw new Error('Submission not found');
+      }
+
+      // Update farm status to approved
+      const { error } = await supabase
+        .from('farms')
+        .update({ 
+          farm_status: 'approved',
+          verified_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Send approval notification
+      try {
+        const emailSent = await sendEmailNotification(
+          submission.farmers.email,
+          '✅ Your Farm Data Was Approved! - AgriTrack',
+          `Hello ${submission.farmers.full_name}, your farm submission has been approved!`
+        );
+        
+        if (emailSent) {
+          showToast('Submission approved and notification sent!', 'success');
+        } else {
+          showToast('Submission approved but notification failed to send', 'warning');
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        showToast('Submission approved but notification failed to send', 'warning');
+      }
+      
+      await refreshData();
+      elements.detailModal.classList.add("hidden");
+      elements.confirmModal.classList.add("hidden");
+      
+    } catch (error) {
+      console.error('Approval failed:', error);
+      showToast('Approval failed: ' + error.message, 'error');
+    }
+  }
+
+  async function rejectSubmission(id) {
+    try {
+      console.log('Rejecting submission:', id);
+      
+      const submission = submissions.find(sub => sub.id === id);
+      if (!submission) {
+        throw new Error('Submission not found');
+      }
+
+      const rejectionReason = 'Submission requires revision';
+
+      // Update farm status to rejected
+      const { error } = await supabase
+        .from('farms')
+        .update({ 
+          farm_status: 'rejected',
+          verified_at: new Date().toISOString(),
+          rejection_reason: rejectionReason
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Send rejection notification
+      try {
+        const emailSent = await sendEmailNotification(
+          submission.farmers.email,
+          '📝 Action Required: Farm Submission Needs Revision - AgriTrack',
+          `Hello ${submission.farmers.full_name}, your farm submission needs some revisions.`
+        );
+        
+        if (emailSent) {
+          showToast('Submission rejected and notification sent!', 'success');
+        } else {
+          showToast('Submission rejected but notification failed to send', 'warning');
+        }
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        showToast('Submission rejected but notification failed to send', 'warning');
+      }
+      
+      await refreshData();
+      elements.detailModal.classList.add("hidden");
+      elements.confirmModal.classList.add("hidden");
+      
+    } catch (error) {
+      console.error('Rejection failed:', error);
+      showToast('Rejection failed: ' + error.message, 'error');
+    }
+  }
+
+  async function openDetailModal(id) {
+    currentDetailId = id;
+    
+    try {
+      const { data: farm, error: farmError } = await supabase
+        .from('farms')
+        .select(`
+          *,
+          farmers!farmer_id (*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (farmError) throw farmError;
+
+      const { data: crops, error: cropsError } = await supabase
+        .from('crops')
+        .select('*')
+        .eq('farm_id', id);
+
+      if (cropsError) console.error('Error fetching crops:', cropsError);
+
+      // Update modal content
+      elements.detailFarmerName.textContent = farm.farmers.full_name || 'Unknown';
+      elements.detailFarmerContact.textContent = farm.farmers.email || 'No contact';
+      elements.detailBarangay.textContent = farm.farmers.barangay || 'Unknown';
+      elements.detailEmail.textContent = farm.farmers.email || 'No email';
+      elements.detailSubmitted.textContent = formatDate(farm.created_at);
+      elements.detailLandArea.textContent = `${farm.land_area || 0} ${farm.area_unit || 'hectares'}`;
+      elements.detailOwnership.textContent = farm.ownership_type || 'N/A';
+      elements.detailTerrain.textContent = farm.terrain_type || 'N/A';
+      elements.detailCropType.textContent = farm.farm_status || 'Pending';
+
+      if (crops && crops.length > 0) {
+        const primaryCrop = crops[0];
+        elements.detailCropType.textContent = `${primaryCrop.crop_type}${crops.length > 1 ? ` +${crops.length - 1} more crops` : ''}`;
+        elements.detailAreaPlanted.textContent = `${primaryCrop.area_planted || 0} ${primaryCrop.planted_area_unit || 'hectares'}`;
+      } else {
+        elements.detailCropType.textContent = 'No crops';
+        elements.detailAreaPlanted.textContent = 'N/A';
+      }
+
+      elements.detailModal.classList.remove("hidden");
+    } catch (error) {
+      console.error('Error loading submission details:', error);
+      showToast('Error loading submission details', 'error');
+    }
+  }
+
+  // RENDER FUNCTIONS
+  function renderPendingTable(submissionsToRender = submissions) {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedSubmissions = submissionsToRender.slice(startIndex, endIndex);
+
+    if (paginatedSubmissions.length === 0) {
+      elements.submissionTableBody.innerHTML = `
+        <tr>
+          <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-inbox text-4xl text-gray-300 mb-2"></i>
+              <p>No pending submissions found</p>
+              <p class="text-sm">Submissions will appear here as farmers submit data</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      elements.submissionTableBody.innerHTML = paginatedSubmissions.map(submission => `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-green-600"></i>
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${submission.farmers.full_name}</div>
+                <div class="text-sm text-gray-500">${submission.farmers.email}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${submission.farmers.email}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${submission.farmers.barangay}</td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex items-center">
+              ${getCropIcon(submission.crops?.[0]?.crop_type)}
+              <span class="text-sm text-gray-900">${submission.crops?.[0]?.crop_type || 'Multiple Crops'}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+            ${formatNumber(submission.land_area)} ${submission.area_unit}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${submission.ownership_type}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${submission.terrain_type}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+            ${formatDate(submission.created_at)}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+            <button class="view-btn text-green-600 hover:text-green-900 mr-3" data-id="${submission.id}">
+              <i class="fas fa-eye"></i> View
+            </button>
+            <button class="approve-btn text-blue-600 hover:text-blue-900 mr-3" data-id="${submission.id}">
+              <i class="fas fa-check"></i> Approve
+            </button>
+            <button class="reject-btn text-red-600 hover:text-red-900" data-id="${submission.id}">
+              <i class="fas fa-times"></i> Reject
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // Update pagination info
+    const totalPages = Math.ceil(submissionsToRender.length / itemsPerPage);
+    elements.paginationInfo.textContent = `Showing ${paginatedSubmissions.length} of ${submissionsToRender.length} submissions`;
+    elements.prevPage.disabled = currentPage === 1;
+    elements.nextPage.disabled = currentPage === totalPages || totalPages === 0;
+  }
+
+  function renderApprovedTable(approvedToRender = approvedSubmissions) {
+    if (approvedToRender.length === 0) {
+      elements.approvedTableBody.innerHTML = `
+        <tr>
+          <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-check-circle text-4xl text-gray-300 mb-2"></i>
+              <p>No approved submissions yet</p>
+              <p class="text-sm">Approved farm data will appear here</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      elements.approvedTableBody.innerHTML = approvedToRender.map(submission => `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-green-600"></i>
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${submission.farmer_name}</div>
+                <div class="text-sm text-gray-500">${submission.barangay}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${submission.barangay}</td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex items-center">
+              ${getCropIcon(submission.crop_type)}
+              <span class="text-sm text-gray-900">${submission.crop_type}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+            ${formatNumber(submission.land_area)} ${submission.area_unit}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+            ${formatNumber(submission.area_planted)} ${submission.planted_area_unit}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+            ${formatDate(submission.date_planted)}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+            ${formatDate(submission.harvest_date)}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Approved
+            </span>
+          </td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  function renderFarmersTable(farmersToRender = farmers) {
+    if (farmersToRender.length === 0) {
+      elements.farmersTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-users text-4xl text-gray-300 mb-2"></i>
+              <p>No registered farmers found</p>
+              <p class="text-sm">Farmer data will appear here</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    } else {
+      elements.farmersTableBody.innerHTML = farmersToRender.map(farmer => `
+        <tr class="border-b border-gray-200 hover:bg-gray-50">
+          <td class="px-4 py-3 whitespace-nowrap">
+            <div class="flex items-center">
+              <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-green-600"></i>
+              </div>
+              <div class="ml-4">
+                <div class="text-sm font-medium text-gray-900">${farmer.full_name}</div>
+                <div class="text-sm text-gray-500">${farmer.email}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.email}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.barangay}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+            ${formatDate(farmer.created_at)}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              Active
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+            <button class="text-blue-600 hover:text-blue-900">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // FILTER FUNCTIONS
+  function filterSubmissions() {
+    const searchTerm = elements.searchFarmer.value.toLowerCase();
+    const barangayFilter = elements.filterBarangay.value;
+    const cropTypeFilter = elements.filterCropType.value;
+    const dateFilter = elements.filterDate.value;
+
+    const filtered = submissions.filter(submission => {
+      const matchesSearch = submission.farmers.full_name.toLowerCase().includes(searchTerm) ||
+                          submission.farmers.email.toLowerCase().includes(searchTerm) ||
+                          submission.farmers.barangay.toLowerCase().includes(searchTerm);
+      const matchesBarangay = !barangayFilter || submission.farmers.barangay === barangayFilter;
+      const matchesCropType = !cropTypeFilter || (submission.crops?.[0]?.crop_type === cropTypeFilter);
+      const matchesDate = !dateFilter || formatDate(submission.created_at) === formatDate(dateFilter);
+
+      return matchesSearch && matchesBarangay && matchesCropType && matchesDate;
+    });
+
+    currentPage = 1;
+    renderPendingTable(filtered);
+  }
+
+  function filterApprovedSubmissions() {
+    const searchTerm = elements.searchApprovedFarmer.value.toLowerCase();
+    const barangayFilter = elements.filterApprovedBarangay.value;
+
+    const filtered = approvedSubmissions.filter(submission => {
+      const matchesSearch = submission.farmer_name.toLowerCase().includes(searchTerm) ||
+                          submission.barangay.toLowerCase().includes(searchTerm);
+      const matchesBarangay = !barangayFilter || submission.barangay === barangayFilter;
+
+      return matchesSearch && matchesBarangay;
+    });
+
+    renderApprovedTable(filtered);
+  }
+
+  function filterFarmers() {
+    const searchTerm = elements.searchFarmers.value.toLowerCase();
+    const filtered = farmers.filter(farmer => 
+      farmer.full_name.toLowerCase().includes(searchTerm) ||
+      farmer.barangay.toLowerCase().includes(searchTerm) ||
+      farmer.email.toLowerCase().includes(searchTerm)
+    );
+    renderFarmersTable(filtered);
+  }
+
+  // PAGINATION FUNCTIONS
+  function paginateSubmissions(direction) {
+    const totalPages = Math.ceil(submissions.length / itemsPerPage);
+    
+    if (direction === 'next' && currentPage < totalPages) {
+      currentPage++;
+    } else if (direction === 'prev' && currentPage > 1) {
+      currentPage--;
+    }
+    
+    renderPendingTable();
+  }
+
+  // MODAL FUNCTIONS
+  function showConfirmation(action, id) {
+    pendingAction = action;
+    currentDetailId = id;
+    
+    const submission = submissions.find(sub => sub.id === id);
+    const actionText = action === 'approve' ? 'approve' : 'reject';
+    
+    elements.confirmModalMessage.textContent = `Are you sure you want to ${actionText} the submission from ${submission.farmers.full_name}?`;
+    elements.confirmActionBtn.textContent = action === 'approve' ? 'Approve' : 'Reject';
+    elements.confirmActionBtn.className = action === 'approve' 
+      ? 'bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400'
+      : 'bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-red-400';
+    
+    elements.confirmModal.classList.remove("hidden");
+  }
+
+  async function refreshData() {
+    try {
+      submissions = await fetchPendingSubmissions();
+      approvedSubmissions = await fetchApprovedSubmissions();
+      farmers = await fetchFarmers();
+      
+      // Update dashboard counts
+      elements.dashboardPending.textContent = submissions.length;
+      elements.pendingCount.textContent = submissions.length;
+      elements.dashboardApproved.textContent = approvedSubmissions.length;
+      elements.dashboardFarmers.textContent = farmers.length;
+      
+      // Render tables
+      renderPendingTable();
+      renderApprovedTable();
+      renderFarmersTable();
+      
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      showToast('Error refreshing data', 'error');
+    }
+  }
+
+  // EVENT LISTENERS SETUP
+  function setupEventListeners() {
+    // Mobile sidebar toggle
+    elements.mobileSidebarToggle?.addEventListener('click', () => {
+      elements.sidebar.classList.toggle('-translate-x-full');
+    });
+
+    // Modal controls
+    elements.closeModalBtn?.addEventListener('click', () => {
+      elements.detailModal.classList.add("hidden");
+    });
+
+    elements.closeConfirmModalBtn?.addEventListener('click', () => {
+      elements.confirmModal.classList.add("hidden");
+    });
+
+    elements.cancelConfirmBtn?.addEventListener('click', () => {
+      elements.confirmModal.classList.add("hidden");
+    });
+
+    elements.confirmActionBtn?.addEventListener('click', () => {
+      if (pendingAction === 'approve') {
+        approveSubmission(currentDetailId);
+      } else {
+        rejectSubmission(currentDetailId);
+      }
+    });
+
+    // Search and filter events
+    elements.searchFarmer?.addEventListener('input', filterSubmissions);
+    elements.filterBarangay?.addEventListener('change', filterSubmissions);
+    elements.filterCropType?.addEventListener('change', filterSubmissions);
+    elements.filterDate?.addEventListener('change', filterSubmissions);
+
+    elements.searchApprovedFarmer?.addEventListener('input', filterApprovedSubmissions);
+    elements.filterApprovedBarangay?.addEventListener('change', filterApprovedSubmissions);
+
+    elements.searchFarmers?.addEventListener('input', filterFarmers);
+
+    // Pagination
+    elements.prevPage?.addEventListener('click', () => paginateSubmissions('prev'));
+    elements.nextPage?.addEventListener('click', () => paginateSubmissions('next'));
+
+    // Export button
+    elements.exportApprovedBtn?.addEventListener('click', () => {
+      showToast('Export feature coming soon!', 'info');
+    });
+  }
+
+  // Event delegation for dynamic buttons
+  function setupEventDelegation() {
+    document.addEventListener('click', function(e) {
+      const target = e.target;
+      
+      // View button
+      if (target.classList.contains('view-btn') || target.closest('.view-btn')) {
+        const button = target.classList.contains('view-btn') ? target : target.closest('.view-btn');
+        const id = button.getAttribute('data-id');
+        if (id) {
+          console.log('View button clicked:', id);
+          openDetailModal(id);
+        }
+      }
+      
+      // Approve button
+      if (target.classList.contains('approve-btn') || target.closest('.approve-btn')) {
+        const button = target.classList.contains('approve-btn') ? target : target.closest('.approve-btn');
+        const id = button.getAttribute('data-id');
+        if (id) {
+          console.log('Approve button clicked:', id);
+          showConfirmation('approve', id);
+        }
+      }
+      
+      // Reject button
+      if (target.classList.contains('reject-btn') || target.closest('.reject-btn')) {
+        const button = target.classList.contains('reject-btn') ? target : target.closest('.reject-btn');
+        const id = button.getAttribute('data-id');
+        if (id) {
+          console.log('Reject button clicked:', id);
+          showConfirmation('reject', id);
+        }
+      }
+      
+      // Navigation links
+      if (target.classList.contains('nav-link') || target.closest('.nav-link')) {
+        const link = target.classList.contains('nav-link') ? target : target.closest('.nav-link');
+        const section = link.getAttribute('data-section');
+        if (section) {
+          e.preventDefault();
+          showSection(section);
+        }
+      }
+    });
+  }
+
+  // SECTION NAVIGATION
+  function showSection(sectionName) {
+    // Hide all sections
+    document.querySelectorAll('.section').forEach(section => {
+      section.classList.add('hidden');
+    });
+    
+    // Remove active class from all nav links
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.classList.remove('active', 'text-green-700', 'bg-green-100', 'font-semibold', 'shadow-sm');
+      link.classList.add('text-gray-700', 'hover:bg-green-50', 'hover:text-green-700');
+    });
+    
+    // Show selected section
+    document.getElementById(sectionName).classList.remove('hidden');
+    
+    // Add active class to current nav link
+    const activeLink = document.querySelector(`[data-section="${sectionName}"]`);
+    if (activeLink) {
+      activeLink.classList.add('active', 'text-green-700', 'bg-green-100', 'font-semibold', 'shadow-sm');
+      activeLink.classList.remove('text-gray-700', 'hover:bg-green-50', 'hover:text-green-700');
+    }
+    
+    // Update URL hash
+    window.location.hash = sectionName;
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', async () => {
+    setupEventListeners();
+    setupEventDelegation();
+    
+    // Handle hash navigation on load
+    const hash = window.location.hash.substring(1);
+    if (hash && ['dashboard', 'pending', 'approved', 'farmers'].includes(hash)) {
+      showSection(hash);
+    } else {
+      showSection('dashboard');
+    }
+    
+    await refreshData();
+  });
+</script>
+</body>
+</html>

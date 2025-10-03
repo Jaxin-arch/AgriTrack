@@ -1,0 +1,1851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2E7D32">
+<title>AgriTrack - Monitoring Crop Demand & Supply in Maragusan</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+[class^="ri-"]::before, [class*=" ri-"]::before {
+  font-family: remixicon !important;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f8f9fa;
+}
+
+/* Section handling */
+.section {
+  display: none;
+}
+.section.active {
+  display: block;
+}
+
+/* Floating menu styles */
+.floating-menu {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 1000;
+}
+.menu-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #2E7D32;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+.menu-button:hover {
+  background: linear-gradient(to bottom, #2E7D32, 
+  rgba(46, 110, 50, 0.8));
+  transform: scale(1.05);
+}
+.hamburger-line {
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  margin: 3px 0;
+  transition: all 0.3s ease;
+}
+.menu-button.active .hamburger-line:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.menu-button.active .hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+.menu-button.active .hamburger-line:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+.menu-content {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 200px;
+  overflow: hidden;
+  transform: scale(0.9);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  transform-origin: bottom right;
+}
+.menu-content.show {
+  transform: scale(1);
+  opacity: 1;
+  visibility: visible;
+}
+.menu-item {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+.menu-item:hover {
+  background-color: #f5f5f5;
+  color: #2E7D32;
+}
+.menu-item i {
+  margin-right: 10px;
+  font-size: 1.1rem;
+}
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
+}
+
+/* Map Section Styles */
+#map-section {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+#maragusanMap {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.map-controls {
+  position: absolute;
+  top: 65px;
+  left: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: fixed;
+}
+
+#barangaySelector {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+#resetMap {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: #2E7D32;
+}
+
+#resetMap:hover {
+  background: #f0f0f0;
+}
+
+.map-overlay {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(5px);
+  border-radius: 8px;
+  padding: 12px;
+  width: 250px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: none;
+}
+
+.map-overlay.active {
+  display: block;
+}
+
+.map-overlay h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.map-overlay-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+}
+
+#cropPieChart {
+  height: 160px;
+  width: 100%;
+}
+
+.crop-legend {
+  font-size: 0.7rem;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.crop-legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.crop-legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+/* Leaflet styles */
+.leaflet-control {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+/* Home section styles */
+.rounded-button {
+  border-radius: 8px;
+}
+
+.bg-green-gradient {
+    background: linear-gradient(to bottom, #2E7D32, rgba(46, 125, 50, 0.8));
+  }
+  
+  #barangayInfoPanel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  padding: 15px;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+}
+
+#barangayInfoPanel.active {
+  transform: translateY(0);
+}
+
+#barangayInfoPanel h3 {
+  margin-top: 0;
+  color: #2E7D32;
+}
+
+.crop-legend-item {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.crop-legend-color {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  margin-right: 10px;
+  border-radius: 3px;
+}
+
+/* Slide Panel Styles */
+#slidePanel {
+  position: fixed;
+  bottom: -450px;
+  left: 0;
+  right: 0;
+  height: 450px;
+  background: white;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+  padding: 15px;
+  /* Remove overflow-y from here */
+}
+
+#slidePanel.open {
+  transform: translateY(-450px); /* Changed to -450px to match height */
+}
+
+#slidePanelHandle {
+  width: 50px;
+  height: 5px;
+  background: #ccc;
+  border-radius: 5px;
+  margin: 0 auto 15px;
+  cursor: pointer;
+  /* Prevent handle from interfering with scrolling */
+  touch-action: none;
+}
+
+#slidePanelContent {
+  height: calc(100% - 30px); /* Adjust if needed */
+  overflow-y: auto;
+  /* Improve scrolling behavior */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+  /* Optional: add padding if content looks cramped */
+  padding: 5px;
+}
+/* Barangay Info Styles */
+.barangay-info {
+  margin-bottom: 15px;
+}
+
+.barangay-stats {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+}
+
+.stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #2E7D32;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Chart Container */
+.chart-container {
+  height: 200px;
+  margin: 15px 0;
+}
+
+/* Crop Legend */
+#cropLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.crop-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+}
+
+.crop-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 5px;
+  display: inline-block;
+}
+</style>
+</head>
+<body class="bg-white">
+<!-- Navigation Bar -->
+<nav class="bg-green-gradient text-white fixed top-0 w-full z-50 shadow-md">
+  <div class="flex items-center justify-between px-4 py-3">
+    <div class="font-['Pacifico'] text-2xl tracking-wide">AgriTrack</div>
+  </div>
+</nav>
+
+<!-- Floating Hamburger Menu -->
+<div class="floating-menu">
+  <div class="menu-button" id="menuButton">
+    <div class="hamburger-line"></div>
+    <div class="hamburger-line"></div>
+    <div class="hamburger-line"></div>
+  </div>
+  
+  <div class="menu-content" id="menuContent">
+    <a href="#" class="menu-item active" data-section="home-section">
+      <i class="ri-home-line"></i> Home
+    </a>
+    <a href="#" class="menu-item" data-section="map-section">
+      <i class="ri-map-pin-line"></i> Agricultural Map
+    </a>
+    <a href="#" class="menu-item" data-section="other-section">
+      <i class="ri-price-tag-3-line"></i> Market Prices
+    </a>
+    <div class="menu-divider"></div>
+    <a href="jey.html" class="menu-item">
+      <i class="ri-add-circle-line"></i> Add Farm Data
+    </a>
+  </div>
+</div>
+
+<!-- Main Content Area -->
+<main class="pt-16 px-4">
+  <!-- Home Section (Active by default) -->
+  <section id="home-section" class="section active">
+    <section class="mt-4 mb-8">
+      <div class="relative rounded-lg overflow-hidden h-48 mb-4">
+        <img src="https://images.unsplash.com/photo-1605000797499-95a51c5269ae?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=800&q=80" alt="Agricultural Landscape" class="w-full h-full object-cover object-top">
+        <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex flex-col justify-end p-4">
+          <h1 class="text-white text-2xl font-bold">Monitor Crop Demand & Supply</h1>
+          <p class="text-white text-sm mt-1">Real-time agricultural data for Maragusan farmers</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-lg shadow-md p-5 mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-800 padding-30">
+          Top Crops in Maragusan</h2>
+      </div>
+      <div class="space-y-4">
+        <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                 <img src="https://cdn-icons-png.flaticon.com/512/2909/2909761.png" alt="Banana" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <h3 class="font-medium">Banana</h3>
+                <p class="text-xs text-gray-500">5,230 tons harvested</p>
+              </div>
+            </div>
+            <div class="flex items-center text-green-600">
+              <span class="text-sm font-medium">+12%</span>
+              <i class="ri-arrow-up-line ml-1"></i>
+            </div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: 94%"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-xs text-gray-500">Demand</span>
+            <span class="text-xs font-medium">Very High</span>
+          </div>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                <img src="https://cdn-icons-png.flaticon.com/512/3944/3944201.png" alt="Coconut" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <h3 class="font-medium">Coconut</h3>
+                <p class="text-xs text-gray-500">3,845 tons harvested</p>
+              </div>
+            </div>
+            <div class="flex items-center text-green-600">
+              <span class="text-sm font-medium">+8%</span>
+              <i class="ri-arrow-up-line ml-1"></i>
+            </div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: 82%"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-xs text-gray-500">Demand</span>
+            <span class="text-xs font-medium">High</span>
+          </div>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                <img src="https://cdn-icons-png.flaticon.com/512/898/898133.png" alt="Rice" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <h3 class="font-medium">Rice</h3>
+                <p class="text-xs text-gray-500">2,750 tons harvested</p>
+              </div>
+            </div>
+            <div class="flex items-center text-red-500">
+              <span class="text-sm font-medium">-3%</span>
+              <i class="ri-arrow-down-line ml-1"></i>
+            </div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: 75%"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-xs text-gray-500">Demand</span>
+            <span class="text-xs font-medium">High</span>
+          </div>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                <img src="https://cdn-icons-png.flaticon.com/512/7830/7830675.png" alt="Corn" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <h3 class="font-medium">Corn</h3>
+                <p class="text-xs text-gray-500">1,980 tons harvested</p>
+              </div>
+            </div>
+            <div class="flex items-center text-green-600">
+              <span class="text-sm font-medium">+5%</span>
+              <i class="ri-arrow-up-line ml-1"></i>
+            </div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: 68%"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-xs text-gray-500">Demand</span>
+            <span class="text-xs font-medium">Medium</span>
+          </div>
+        </div>
+        <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+          <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+              <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                <img src="https://cdn-icons-png.flaticon.com/512/6866/6866583.png" alt="Durian" class="w-full h-full object-cover">
+              </div>
+              <div>
+                <h3 class="font-medium">Durian</h3>
+                <p class="text-xs text-gray-500">1,450 tons harvested</p>
+              </div>
+            </div>
+            <div class="flex items-center text-green-600">
+              <span class="text-sm font-medium">+15%</span>
+              <i class="ri-arrow-up-line ml-1"></i>
+            </div>
+          </div>
+          <div class="w-full bg-gray-100 rounded-full h-2.5">
+            <div class="bg-primary h-2.5 rounded-full" style="width: 62%"></div>
+          </div>
+          <div class="flex justify-between mt-1">
+            <span class="text-xs text-gray-500">Demand</span>
+            <span class="text-xs font-medium">Medium</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </section>
+
+<!-- Map Section -->
+<section id="map-section" class="section">
+  <div class="relative h-screen">
+    <!-- Map container -->
+    <div id="maragusanMap" class="absolute inset-0 z-0"></div>
+    
+    <!-- Map controls at top -->
+    <div class="map-controls">
+<select id="barangaySelector">
+          <option value="" disabled selected>Select Barangay</option>
+          <option value="Bagong Silang">Bagong Silang</option>
+          <option value="Bahi">Bahi</option>
+          <option value="Cambagang">Cambagang</option>
+          <option value="Coronobe">Coronobe</option>
+          <option value="Katipunan">Katipunan</option>
+          <option value="Langgawisan">Langgawisan</option>
+          <option value="Lahi">Lahi</option>
+          <option id="Mabugnao-btn" value="Mabugnao">Mabugnao</option>
+          <option value="Magcagong">Magcagong</option>
+          <option value="Mahayahay">Mahayahay</option>
+          <option value="Mapawa">Mapawa</option>
+          <option value="Maragusan">Poblacion</option>
+          <option value="Mauswagon">Mauswagon</option>
+          <option value="New Albay">New Albay</option>
+          <option value="New Katipunan">New Katipunan</option>
+          <option value="New Manay">New Manay</option>
+          <option value="New Panay">New Panay</option>
+          <option value="Paloc">Paloc</option>
+          <option value="Pamintaran">Pamintaran</option>
+          <option value="Parasanon">Parasanon</option>
+          <option value="Talian">Talian</option>
+          <option value="Tandik">Tandik</option>
+          <option value="Tigbao">Tigbao</option>
+          <option value="Tupas">Tupas</option>
+        </select>
+      <button id="resetMap" title="Reset view">
+        <i class="ri-refresh-line"></i>
+      </button>
+    </div>
+    
+    <!-- Slide Panel (should be only one) -->
+    <div id="slidePanel">
+      <div id="slidePanelHandle"></div>
+      <div id="slidePanelContent">
+        <h3 id="barangayTitle">Select a Barangay</h3>
+        <div class="barangay-stats">
+          <div class="stat-item">
+            <div class="stat-value" id="barangayArea">--</div>
+            <div class="stat-label">Area</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="barangayPopulation">--</div>
+            <div class="stat-label">Population</div>
+          </div>
+        </div>
+        <div class="chart-container">
+          <div id="cropPieChart" style="width:100%;height:100%;"></div>
+        </div>
+        <div id="cropLegend"></div>
+      </div>
+    </div>
+  </div>
+</section>
+  <!-- Market Analytics Section (Hidden by default) -->
+  <section id="other-section" class="section">
+    <div class="bg-white rounded-lg shadow-md p-5 mb-8">
+      <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
+        <h2 class="text-xl font-semibold text-gray-800">Market Analytics</h2>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <div class="relative flex-1">
+            <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent">
+              <option value="pechay">Pechay</option>
+<option value="chinese_cabbage">Chinese Cabbage</option>
+<option value="lettuce">Lettuce</option>
+<option value="carrots">Carrots</option>
+<option value="bell_pepper">Bell Pepper</option>
+<option value="chili_pepper">Chili Pepper</option>
+<option value="string_beans">String Beans</option>
+<option value="okra">Okra</option>
+<option value="eggplant">Eggplant</option>
+<option value="ampalaya">Ampalaya (Bitter Melon)</option>
+<option value="squash">Squash</option>
+<option value="cucumber">Cucumber</option>
+<option value="tomato">Tomato</option>
+<option value="sweet_potato">Sweet Potato (Camote)</option>
+<option value="gabi">Gabi (Taro)</option>
+<option value="kangkong">Kangkong (Water Spinach)</option>
+<option value="banana_saba">Banana (Saba)</option>
+<option value="banana_lakatan">Banana (Lakatan)</option>
+<option value="papaya">Papaya</option>
+<option value="pineapple">Pineapple</option>
+<option value="mango">Mango</option>
+<option value="calamansi">Calamansi</option>
+<option value="coconut">Coconut</option>
+<option value="durian">Durian</option>
+<option value="rambutan">Rambutan</option>
+<option value="lanzones">Lanzones</option>
+<option value="jackfruit">Jackfruit</option>
+<option value="rice">Rice (Palay)</option>
+<option value="corn">Corn (Maize)</option>
+<option value="cassava">Cassava</option>
+<option value="coffee">Coffee</option>
+<option value="cacao">Cacao</option>
+<option value="abaca">Abaca</option>
+            </select>
+            <div class="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="otherCropsChart" style="height: 200px;" class="mb-4"></div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead>
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Crop</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Farm Gate (₱)</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Retail (₱)</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Demand</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
+            </tr>
+          </thead>
+          <tbody id="priceTableBody" class="bg-white divide-y divide-gray-100">
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Banana - Cavendish</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">25.50</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">38.75</td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Very High</span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="text-green-600 text-sm flex items-center justify-end">
+                  <span>▲ 12%</span>
+                  <i class="ri-arrow-up-line ml-1"></i>
+                </span>
+              </td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Coconut</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">18.25</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">28.50</td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">High</span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="text-green-600 text-sm flex items-center justify-end">
+                  <span>▲ 8%</span>
+                  <i class="ri-arrow-up-line ml-1"></i>
+                </span>
+              </td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Rice</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">32.75</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">45.25</td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="px-2 py-1 text-xs rounded-full bg-orange-100 text-orange-800">High</span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="text-red-500 text-sm flex items-center justify-end">
+                  <span>▼ 3%</span>
+                  <i class="ri-arrow-down-line ml-1"></i>
+                </span>
+              </td>
+            </tr>
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Corn</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">15.50</td>
+              <td class="px-4 py-3 whitespace-nowrap text-sm text-right">22.75</td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Medium</span>
+              </td>
+              <td class="px-4 py-3 whitespace-nowrap text-right">
+                <span class="text-green-600 text-sm flex items-center justify-end">
+                  <span>▲ 5%</span>
+                  <i class="ri-arrow-up-line ml-1"></i>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mt-3 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500">
+        <div class="mb-2 sm:mb-0">
+          <i class="ri-information-line mr-1"></i> Prices are average estimates based on local trader reports
+        </div>
+        <div>
+          <i class="ri-time-line mr-1"></i> Updated: <span id="priceUpdateDate">April 22, 2025</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>  
+
+<script>
+  // Database configuration (should be handled server-side in production)
+  const DB_CONFIG = {
+    host: 'your-database-host',
+    port: 5432,
+    database: 'your-database-name',
+    user: 'your-username',
+    password: 'your-password',
+    ssl: false
+  };
+
+  // Application state for real data
+  let approvedFarms = [];
+  let cropStatistics = {};
+  let supabase = null; // Initialize as null
+
+  // Initialize sections - only home section visible by default
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 AgriTrack Main Page Initializing...');
+    
+    // Initialize Supabase Client AFTER DOM is loaded
+    const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+    supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    console.log('✅ Supabase initialized');
+    
+    // Set first menu item as active
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    document.querySelector('.menu-item[data-section="home-section"]').classList.add('active');
+    
+    // Initialize the map when map section is accessed
+    let mapInitialized = false;
+    
+    const mapMenuItem = document.querySelector('.menu-item[data-section="map-section"]');
+    if (mapMenuItem) {
+      mapMenuItem.addEventListener('click', function() {
+        if (!mapInitialized) {
+          initAgriculturalMap();
+          mapInitialized = true;
+        }
+      });
+    }
+
+    // Load initial data - NOW USING REAL SUPABASE DATA
+    loadApprovedFarmsData(); // Load real approved farms
+    loadMarketPricesData();
+    
+    // Test function - can be called from console later
+    window.testSupabaseConnection = testSupabaseConnection;
+  });
+
+  // ============================================================================
+  // REAL DATA FUNCTIONS - SUPABASE INTEGRATION
+  // ============================================================================
+
+  // Test Supabase connection (can call from browser console: testSupabaseConnection())
+  async function testSupabaseConnection() {
+    if (!supabase) {
+      console.error('❌ Supabase not initialized yet');
+      return false;
+    }
+    
+    console.log('🔌 Testing Supabase connection...');
+    try {
+      const { data, error } = await supabase
+        .from('farms')
+        .select('count')
+        .eq('farm_status', 'approved')
+        .limit(1);
+
+      if (error) {
+        console.error('❌ Supabase connection failed:', error);
+        return false;
+      }
+      
+      console.log('✅ Supabase connected successfully!');
+      console.log('Approved farms count:', data);
+      return true;
+    } catch (error) {
+      console.error('❌ Connection test error:', error);
+      return false;
+    }
+  }
+
+  // Load REAL approved farms data from Supabase
+  async function loadApprovedFarmsData() {
+    // Check if supabase is initialized
+    if (!supabase) {
+      console.error('❌ Supabase not initialized yet');
+      updateTopCropsUI(getPlaceholderData());
+      return;
+    }
+
+    try {
+        console.log('🌱 Loading APPROVED farms data from Supabase...');
+        
+        // Fetch only APPROVED farms with their crops and farmer info
+        const { data: farms, error } = await supabase
+            .from('farms')
+            .select(`
+                id,
+                land_area,
+                area_unit,
+                farm_status,
+                verified_at,
+                created_at,
+                farmers!farmer_id (
+                    id,
+                    full_name,
+                    barangay
+                ),
+                crops(*)
+            `)
+            .eq('farm_status', 'approved')  // CRITICAL: ONLY APPROVED FARMS
+            .order('verified_at', { ascending: false });
+
+        if (error) {
+            console.error('❌ Error fetching approved farms:', error);
+            // Fallback to placeholder data
+            console.log('🔄 Using placeholder data due to error');
+            updateTopCropsUI(getPlaceholderData());
+            return;
+        }
+
+        console.log(`✅ Loaded ${farms?.length || 0} approved farms from Supabase`);
+        approvedFarms = farms || [];
+
+        if (approvedFarms.length > 0) {
+            // Process the real data
+            const cropStats = processCropData(approvedFarms);
+            updateTopCropsUI(cropStats);
+            updateBarangayCropData(approvedFarms); // Update map data
+        } else {
+            // No approved farms yet
+            console.log('ℹ️ No approved farms found in database');
+            updateTopCropsUI(getPlaceholderData());
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading approved farms:', error);
+        updateTopCropsUI(getPlaceholderData());
+    }
+  }
+
+  // Process real farm data into crop statistics
+  function processCropData(farms) {
+    const cropStats = {};
+    
+    farms.forEach(farm => {
+        if (farm.crops && farm.crops.length > 0) {
+            farm.crops.forEach(crop => {
+                const cropType = crop.crop_type || 'Unknown';
+                
+                if (!cropStats[cropType]) {
+                    cropStats[cropType] = {
+                        crop_type: cropType,
+                        total_yield: 0,
+                        total_area: 0,
+                        total_farms: 0,
+                        barangays: new Set()
+                    };
+                }
+                
+                // Sum up the statistics
+                cropStats[cropType].total_yield += (crop.harvest_yield || 0);
+                cropStats[cropType].total_area += (crop.area_planted || 0);
+                cropStats[cropType].total_farms += 1;
+                if (farm.farmers?.barangay) {
+                    cropStats[cropType].barangays.add(farm.farmers.barangay);
+                }
+            });
+        }
+    });
+
+    // Convert to array and calculate additional metrics
+    return Object.values(cropStats)
+        .map(stat => ({
+            ...stat,
+            barangay_count: stat.barangays.size,
+            average_yield: stat.total_area > 0 ? (stat.total_yield / stat.total_area) : 0
+        }))
+        .sort((a, b) => b.total_yield - a.total_yield) // Sort by yield descending
+        .slice(0, 5); // Top 5 crops
+  }
+
+  // Update barangay crop data for the map with real data
+  function updateBarangayCropData(farms) {
+    const barangayData = {};
+    
+    // Group farms by barangay
+    farms.forEach(farm => {
+        const barangay = farm.farmers?.barangay;
+        if (!barangay) return;
+        
+        if (!barangayData[barangay]) {
+            barangayData[barangay] = {
+                crops: {},
+                totalFarms: 0
+            };
+        }
+        
+        barangayData[barangay].totalFarms++;
+        
+        // Count crops in this barangay
+        if (farm.crops && farm.crops.length > 0) {
+            farm.crops.forEach(crop => {
+                const cropType = crop.crop_type || 'Unknown';
+                barangayData[barangay].crops[cropType] = 
+                    (barangayData[barangay].crops[cropType] || 0) + 1;
+            });
+        }
+    });
+    
+    // Store for map use
+    window.realBarangayData = barangayData;
+    console.log('🗺️ Updated barangay data with real farms:', barangayData);
+  }
+
+  // Fallback placeholder data
+  function getPlaceholderData() {
+    return [
+        { crop_type: 'Banana', total_yield: 5230000, total_area: 1000, total_farms: 150, average_yield: 5230 },
+        { crop_type: 'Coconut', total_yield: 3845000, total_area: 800, total_farms: 120, average_yield: 4806 },
+        { crop_type: 'Rice', total_yield: 2750000, total_area: 500, total_farms: 200, average_yield: 5500 },
+        { crop_type: 'Corn', total_yield: 1980000, total_area: 600, total_farms: 180, average_yield: 3300 },
+        { crop_type: 'Durian', total_yield: 1450000, total_area: 300, total_farms: 90, average_yield: 4833 }
+    ];
+  }
+
+  // Update top crops UI with real data
+  function updateTopCropsUI(cropsData) {
+    const cropsContainer = document.querySelector('#home-section .space-y-4');
+    if (!cropsContainer) return;
+    
+    cropsContainer.innerHTML = ''; // Clear existing content
+    
+    if (!cropsData || cropsData.length === 0) {
+        cropsContainer.innerHTML = `
+            <div class="text-center py-8 text-gray-500">
+                <i class="ri-information-line text-4xl mb-2"></i>
+                <p>No approved farm data available yet</p>
+                <p class="text-sm">Farm data will appear here once approved by administrators</p>
+            </div>
+        `;
+        return;
+    }
+    
+    cropsData.forEach((crop, index) => {
+        // Convert kg to tons for display
+        const yieldInTons = (crop.total_yield / 1000).toFixed(0);
+        const yieldPerHectare = crop.average_yield ? (crop.average_yield / 1000).toFixed(1) : 0;
+        
+        // Formula: Estimate demand based on production volume
+        const demandLevel = calculateDemandLevel(crop.total_yield);
+        
+        // Formula: Calculate trend (random for demo, would use historical data)
+        const trend = Math.random() > 0.3 ? 'up' : 'down'; // 70% chance of growth
+        const trendPercent = (Math.random() * 15 + 1).toFixed(0);
+        
+        const cropElement = `
+            <div class="border border-gray-100 rounded-lg p-3 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full overflow-hidden mr-3">
+                            <img src="${getCropImage(crop.crop_type)}" alt="${crop.crop_type}" class="w-full h-full object-cover">
+                        </div>
+                        <div>
+                            <h3 class="font-medium">${crop.crop_type}</h3>
+                            <p class="text-xs text-gray-500">${yieldInTons} tons from ${crop.total_farms} farms</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center ${trend === 'up' ? 'text-green-600' : 'text-red-500'}">
+                        <span class="text-sm font-medium">${trend === 'up' ? '+' : '-'}${trendPercent}%</span>
+                        <i class="ri-arrow-${trend === 'up' ? 'up' : 'down'}-line ml-1"></i>
+                    </div>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-2.5">
+                    <div class="bg-primary h-2.5 rounded-full" style="width: ${calculateDemandWidth(demandLevel)}%"></div>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-xs text-gray-500">Productivity</span>
+                    <span class="text-xs font-medium">${yieldPerHectare} tons/ha</span>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-xs text-gray-500">Demand</span>
+                    <span class="text-xs font-medium">${demandLevel}</span>
+                </div>
+                ${crop.barangay_count ? `
+                <div class="flex justify-between mt-1">
+                    <span class="text-xs text-gray-500">Barangays</span>
+                    <span class="text-xs font-medium">${crop.barangay_count} areas</span>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        cropsContainer.innerHTML += cropElement;
+    });
+
+    // Add debug info
+    console.log('📊 Updated UI with crop data:', cropsData);
+  }
+
+  // Floating menu functionality
+  const menuButton = document.getElementById('menuButton');
+  const menuContent = document.getElementById('menuContent');
+
+  if (menuButton && menuContent) {
+    // Toggle menu
+    menuButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menuButton.classList.toggle('active');
+      menuContent.classList.toggle('show');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function() {
+      menuButton.classList.remove('active');
+      menuContent.classList.remove('show');
+    });
+
+    // Prevent closing when clicking inside menu
+    menuContent.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  }
+
+  // Section switching functionality
+  const menuItems = document.querySelectorAll('.menu-item[data-section]');
+  const sections = document.querySelectorAll('.section');
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Update active states
+      menuItems.forEach(btn => btn.classList.remove('active'));
+      sections.forEach(section => section.classList.remove('active'));
+      
+      this.classList.add('active');
+      const sectionId = this.getAttribute('data-section');
+      const sectionElement = document.getElementById(sectionId);
+      if (sectionElement) {
+        sectionElement.classList.add('active');
+      }
+      
+      // Close menu after selection
+      if (menuButton && menuContent) {
+        menuButton.classList.remove('active');
+        menuContent.classList.remove('show');
+      }
+      
+      // Resize charts when section becomes visible
+      if (sectionId === 'map-section' && window.pieChart) {
+        setTimeout(() => {
+          window.pieChart.resize();
+        }, 100);
+      } else if (sectionId === 'other-section' && window.priceChart) {
+        setTimeout(() => {
+          window.priceChart.resize();
+        }, 100);
+      }
+    });
+  });
+
+  // Database connection function (placeholder - replace with actual API calls)
+  async function queryDatabase(sql, params = []) {
+    console.log('⚠️ Database query function called but no backend API available');
+    console.log('SQL:', sql);
+    
+    // Return empty data for now since we don't have a backend
+    return { rows: [] };
+  }
+
+  // Load market prices data
+  async function loadMarketPricesData() {
+    // Formula: Get latest prices with demand calculations
+    const sql = `
+      SELECT 
+        mp.crop_type,
+        mp.farm_gate_price,
+        mp.retail_price,
+        mp.demand,
+        mp.trend,
+        b.name as barangay_name,
+        mp.recorded_at
+      FROM market_prices mp
+      LEFT JOIN barangays b ON mp.barangay_id = b.id
+      WHERE mp.recorded_at = (
+        SELECT MAX(recorded_at) 
+        FROM market_prices mp2 
+        WHERE mp2.crop_type = mp.crop_type
+      )
+      ORDER BY mp.crop_type
+    `;
+    
+    const result = await queryDatabase(sql);
+    
+    if (result.rows && result.rows.length > 0) {
+      updateMarketPricesUI(result.rows);
+      updateMarketPricesChart(result.rows);
+    } else {
+      // Fallback to placeholder data if no database results
+      const placeholderData = [
+        { crop_type: 'Banana', farm_gate_price: 25.50, retail_price: 40.00, demand: 'High', trend: 'Increasing', barangay_name: 'Main Market', recorded_at: new Date() },
+        { crop_type: 'Coconut', farm_gate_price: 18.75, retail_price: 30.00, demand: 'Medium', trend: 'Stable', barangay_name: 'Main Market', recorded_at: new Date() },
+        { crop_type: 'Rice', farm_gate_price: 35.00, retail_price: 50.00, demand: 'Very High', trend: 'Increasing', barangay_name: 'Main Market', recorded_at: new Date() },
+        { crop_type: 'Corn', farm_gate_price: 20.50, retail_price: 32.00, demand: 'Medium', trend: 'Decreasing', barangay_name: 'Main Market', recorded_at: new Date() },
+        { crop_type: 'Durian', farm_gate_price: 80.00, retail_price: 120.00, demand: 'Low', trend: 'Stable', barangay_name: 'Main Market', recorded_at: new Date() }
+      ];
+      updateMarketPricesUI(placeholderData);
+      updateMarketPricesChart(placeholderData);
+    }
+  }
+
+  // Update market prices UI
+  function updateMarketPricesUI(pricesData) {
+    const tableBody = document.getElementById('priceTableBody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    pricesData.forEach(price => {
+      const row = `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${price.crop_type}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-right">${price.farm_gate_price.toFixed(2)}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-sm text-right">${price.retail_price.toFixed(2)}</td>
+          <td class="px-4 py-3 whitespace-nowrap text-right">
+            <span class="px-2 py-1 text-xs rounded-full ${getDemandColorClass(price.demand)}">
+              ${price.demand}
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-right">
+            <span class="${price.trend === 'Increasing' ? 'text-green-600' : price.trend === 'Decreasing' ? 'text-red-500' : 'text-gray-500'} text-sm flex items-center justify-end">
+              <span>${price.trend === 'Increasing' ? '▲' : price.trend === 'Decreasing' ? '▼' : '●'} ${price.trend}</span>
+              <i class="ri-arrow-${price.trend === 'Increasing' ? 'up' : price.trend === 'Decreasing' ? 'down' : 'right'}-line ml-1"></i>
+            </span>
+          </td>
+        </tr>
+      `;
+      
+      tableBody.innerHTML += row;
+    });
+    
+    // Update the price update date
+    if (pricesData.length > 0) {
+      const latestDate = new Date(pricesData[0].recorded_at);
+      const priceUpdateDateElement = document.getElementById('priceUpdateDate');
+      if (priceUpdateDateElement) {
+        priceUpdateDateElement.textContent = 
+          latestDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+      }
+    }
+  }
+
+  // Update market prices chart
+  function updateMarketPricesChart(pricesData) {
+    const chartElement = document.getElementById('otherCropsChart');
+    if (!chartElement) return;
+    
+    // Group by crop type and calculate average prices
+    const cropAverages = {};
+    pricesData.forEach(price => {
+      if (!cropAverages[price.crop_type]) {
+        cropAverages[price.crop_type] = {
+          farm_gate: 0,
+          retail: 0,
+          count: 0
+        };
+      }
+      cropAverages[price.crop_type].farm_gate += price.farm_gate_price;
+      cropAverages[price.crop_type].retail += price.retail_price;
+      cropAverages[price.crop_type].count += 1;
+    });
+    
+    // Calculate averages
+    const crops = Object.keys(cropAverages);
+    const farmGatePrices = crops.map(crop => 
+      (cropAverages[crop].farm_gate / cropAverages[crop].count).toFixed(2)
+    );
+    const retailPrices = crops.map(crop => 
+      (cropAverages[crop].retail / cropAverages[crop].count).toFixed(2)
+    );
+    
+    // Initialize or update chart
+    if (!window.priceChart) {
+      window.priceChart = echarts.init(chartElement);
+    }
+    
+    window.priceChart.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: params => `
+          <strong>${params[0].name}</strong><br/>
+          Farm Gate: ₱${params[0].value}<br/>
+          Retail: ₱${params[1].value}
+        `
+      },
+      legend: { data: ['Farm Gate Price', 'Retail Price'], bottom: 0 },
+      xAxis: {
+        type: 'category',
+        data: crops,
+        axisLabel: { interval: 0, rotate: crops.length > 5 ? 45 : 0 }
+      },
+      yAxis: { type: 'value', name: 'Price (₱)' },
+      series: [
+        {
+          name: 'Farm Gate Price',
+          type: 'bar',
+          data: farmGatePrices,
+          itemStyle: { color: '#2E7D32' }
+        },
+        {
+          name: 'Retail Price',
+          type: 'bar',
+          data: retailPrices,
+          itemStyle: { color: '#81C784' }
+        }
+      ]
+    });
+  }
+
+  // Helper functions for calculations
+  function calculateDemandLevel(yieldAmount) {
+    // Formula: Classify demand based on production volume
+    if (yieldAmount > 500000) return 'Very High';
+    if (yieldAmount > 250000) return 'High';
+    if (yieldAmount > 100000) return 'Medium';
+    if (yieldAmount > 50000) return 'Low';
+    return 'Very Low';
+  }
+
+  function calculateDemandWidth(demandLevel) {
+    // Formula: Convert demand level to visual width
+    switch(demandLevel) {
+      case 'Very High': return 95;
+      case 'High': return 80;
+      case 'Medium': return 65;
+      case 'Low': return 40;
+      case 'Very Low': return 25;
+      default: return 50;
+    }
+  }
+
+  function getDemandColorClass(demandLevel) {
+    // Formula: Assign color based on demand level
+    switch(demandLevel) {
+      case 'Very High': return 'bg-red-100 text-red-800';
+      case 'High': return 'bg-orange-100 text-orange-800';
+      case 'Medium': return 'bg-blue-100 text-blue-800';
+      case 'Low': return 'bg-green-100 text-green-800';
+      case 'Very Low': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  }
+function getCropImage(cropType) {
+    // More specific and accurate crop icons
+    const cropImages = {
+        // === FRUITS ===
+        'Banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
+        'Cavendish Banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
+        'Durian': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
+        'Coconut': 'https://cdn-icons-png.flaticon.com/512/3944/3944201.png',
+        'Mango': 'https://cdn-icons-png.flaticon.com/512/2909/2909797.png',
+        'Pineapple': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'Papaya': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'Watermelon': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'Jackfruit': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
+        
+        // === GRAINS & CEREALS ===
+        'Rice': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'Corn': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        
+        // === VEGETABLES - LEAFY ===
+        'Cabbage': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Lettuce': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Petchay': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Kangkong': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Spinach': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        
+        // === VEGETABLES - FRUIT-BEARING ===
+        'Tomato': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Eggplant': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Bell Pepper': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Ampalaya': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Sayote': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Squash': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Okra': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        
+        // === VEGETABLES - LEGUMES ===
+        'Baguio Beans': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'String Beans': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Mung Bean': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Peanut': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        
+        // === VEGETABLES - ROOT CROPS ===
+        'Carrots': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Radish': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Sweet Potato': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Cassava': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Ginger': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Garlic': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'Onion': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        
+        // === CASH CROPS ===
+        'Coffee': 'https://cdn-icons-png.flaticon.com/512/3082/3082675.png',
+        'Cacao': 'https://cdn-icons-png.flaticon.com/512/6176/6176920.png',
+        'Abaca': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'Rubber': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        
+        // === OTHERS ===
+        'Sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
+    };
+    
+    return cropImages[cropType] || 'https://cdn-icons-png.flaticon.com/512/6866/6866583.png';
+}
+  function formatNumber(num) {
+    // Formula: Format large numbers with commas
+    return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  }
+
+  // ============================================================================
+  // TESTING FUNCTIONS - Can call these from browser console
+  // ============================================================================
+
+  // Test function to refresh data
+  window.refreshFarmData = async function() {
+    console.log('🔄 Manually refreshing farm data...');
+    await loadApprovedFarmsData();
+  };
+
+  // Test function to show current data
+  window.showCurrentData = function() {
+    console.log('📊 Current approved farms:', approvedFarms);
+    console.log('🌱 Current crop statistics:', cropStatistics);
+    return {
+      farms: approvedFarms,
+      crops: cropStatistics
+    };
+  };
+
+  // Test function to simulate new approval
+  window.simulateNewApproval = function() {
+    console.log('🎯 Simulating new farm approval...');
+    // This would be called when admin approves a farm
+    setTimeout(() => {
+      loadApprovedFarmsData(); // Refresh data
+    }, 1000);
+  };
+
+  window.addEventListener('resize', function() {
+    if (window.pieChart) window.pieChart.resize();
+    if (window.priceChart) window.priceChart.resize();
+  });
+
+  // Update date
+  const priceUpdateDateElement = document.getElementById('priceUpdateDate');
+  if (priceUpdateDateElement) {
+    priceUpdateDateElement.textContent = 
+      new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  // Login button
+  const loginButton = document.getElementById('loginBtn');
+  if (loginButton) {
+    loginButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      window.location.href = "jey.html";
+    });
+  }
+
+  // Agricultural Map Section
+  function initAgriculturalMap() {
+    const mapElement = document.getElementById('maragusanMap');
+    if (!mapElement) return;
+    
+    // Initialize map
+    const map = L.map('maragusanMap', {
+      preferCanvas: true, // Better performance for many polygons
+      zoomControl: false // We'll add our own
+    }).setView([7.3167, 126.1167], 12);
+    
+    // Add tile layer with caching
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18,
+      minZoom: 10
+    }).addTo(map);
+
+    // Barangay crop data - THIS SHOULD NOW USE REAL DATA FROM approvedFarms
+    const barangayCropData = {
+      "Bagong Silang": [
+        { crop: "Banana", percentage: 45, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 25, color: '#795548' },
+        { crop: "Coffee", percentage: 15, color: '#5D4037' },
+        { crop: "Rice", percentage: 10, color: '#FFC107' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Bahi": [
+        { crop: "Banana", percentage: 60, color: '#2E7D32' },
+        { crop: "Corn", percentage: 20, color: '#FF9800' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Cambagang": [
+        { crop: "Banana", percentage: 35, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 30, color: '#795548' },
+        { crop: "Coffee", percentage: 20, color: '#5D4037' },
+        { crop: "Others", percentage: 15, color: '#9E9E9E' }
+      ],
+      "Coronobe": [
+        { crop: "Rice", percentage: 50, color: '#FFC107' },
+        { crop: "Corn", percentage: 30, color: '#FF9800' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Katipunan": [
+        { crop: "Banana", percentage: 40, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 30, color: '#795548' },
+        { crop: "Durian", percentage: 20, color: '#4CAF50' },
+        { crop: "Others", percentage: 10, color: '#9E9E9E' }
+      ],
+      "Langgawisan": [
+        { crop: "Rice", percentage: 55, color: '#FFC107' },
+        { crop: "Banana", percentage: 25, color: '#2E7D32' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Lahi": [
+        { crop: "Coconut", percentage: 45, color: '#795548' },
+        { crop: "Banana", percentage: 30, color: '#2E7D32' },
+        { crop: "Coffee", percentage: 15, color: '#5D4037' },
+        { crop: "Others", percentage: 10, color: '#9E9E9E' }
+      ],
+      "Mabugnao": [
+        { crop: "Corn", percentage: 50, color: '#FF9800' },
+        { crop: "Rice", percentage: 30, color: '#FFC107' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Magcagong": [
+        { crop: "Banana", percentage: 50, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 25, color: '#795548' },
+        { crop: "Durian", percentage: 15, color: '#4CAF50' },
+        { crop: "Others", percentage: 10, color: '#9E9E9E' }
+      ],
+      "Mahayahay": [
+        { crop: "Rice", percentage: 60, color: '#FFC107' },
+        { crop: "Corn", percentage: 25, color: '#FF9800' },
+        { crop: "Others", percentage: 15, color: '#9E9E9E' }
+      ],
+      "Mapawa": [
+        { crop: "Banana", percentage: 55, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 25, color: '#795548' },
+        { crop: "Coffee", percentage: 15, color: '#5D4037' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Mauswagon": [
+        { crop: "Corn", percentage: 45, color: '#FF9800' },
+        { crop: "Rice", percentage: 35, color: '#FFC107' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "New Albay": [
+        { crop: "Banana", percentage: 65, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 20, color: '#795548' },
+        { crop: "Others", percentage: 15, color: '#9E9E9E' }
+      ],
+      "New Katipunan": [
+        { crop: "Rice", percentage: 50, color: '#FFC107' },
+        { crop: "Corn", percentage: 30, color: '#FF9800' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "New Manay": [
+        { crop: "Banana", percentage: 40, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 30, color: '#795548' },
+        { crop: "Durian", percentage: 20, color: '#4CAF50' },
+        { crop: "Others", percentage: 10, color: '#9E9E9E' }
+      ],
+      "New Panay": [
+        { crop: "Rice", percentage: 55, color: '#FFC107' },
+        { crop: "Corn", percentage: 30, color: '#FF9800' },
+        { crop: "Others", percentage: 15, color: '#9E9E9E' }
+      ],
+      "Paloc": [
+        { crop: "Banana", percentage: 50, color: '#2E7D32' },
+        { crop: "Coconut", percentage: 30, color: '#795548' },
+        { crop: "Coffee", percentage: 15, color: '#5D4037' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Pamintaran": [
+        { crop: "Corn", percentage: 45, color: '#FF9800' },
+        { crop: "Rice", percentage: 35, color: '#FFC107' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Parasanon": [
+        { crop: "Banana", percentage: 60, color: '#2E7D32' },
+        { crop: "Durian", percentage: 20, color: '#4CAF50' },
+        { crop: "Others", percentage: 20, color: '#9E9E9E' }
+      ],
+      "Talian": [
+        { crop: "Rice", percentage: 50, color: '#FFC107' },
+        { crop: "Banana", percentage: 30, color: '#2E7D32' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Tandik": [
+        { crop: "Coconut", percentage: 45, color: '#795548' },
+        { crop: "Banana", percentage: 30, color: '#2E7D32' },
+        { crop: "Coffee", percentage: 20, color: '#5D4037' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Tigbao": [
+        { crop: "Banana", percentage: 55, color: '#2E7D32' },
+        { crop: "Corn", percentage: 25, color: '#FF9800' },
+        { crop: "Vegetables", percentage: 15, color: '#8BC34A' },
+        { crop: "Others", percentage: 5, color: '#9E9E9E' }
+      ],
+      "Tupas": [
+        { crop: "Rice", percentage: 60, color: '#FFC107' },
+        { crop: "Banana", percentage: 25, color: '#2E7D32' },
+        { crop: "Others", percentage: 15, color: '#9E9E9E' }
+      ]
+    };
+
+    // Initialize pie chart
+    const pieChartElement = document.getElementById('cropPieChart');
+    if (pieChartElement) {
+      window.pieChart = echarts.init(pieChartElement);
+    }
+
+    // Corrected GeoJSON data structure
+    const maragusanGeoJSON = {
+      "type": "FeatureCollection",
+      "features": [
+         {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.11824745900003,7.281522877000042],[126.10937396300005,7.298633386000062],[126.08782097000004,7.297237534000033],[126.03789877200006,7.28903752900004],[126.0383924160001,7.273797866000054],[126.0989881480001,7.266595504000064],[126.10484952700006,7.264421566000065],[126.109395188,7.27940951800002],[126.11824745900003,7.281522877000042]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205001,"adm4_en":"Bagong Silang","geo_level":"Bgy","len_crs":21979,"area_crs":22516670,"len_km":21,"area_km2":22},"id":1108205001},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22310075400003,7.312405174000048],[126.17610831300011,7.309606481000059],[126.15565110700004,7.309669041000063],[126.14337257200008,7.313982807000057],[126.14010245600004,7.302028542000075],[126.1339534330001,7.287911773000074],[126.13430811000002,7.270457247000023],[126.14112077200002,7.25723151300002],[126.15932622300011,7.257347224000057],[126.22821264900006,7.271529252000049],[126.22644868900011,7.294101517000059],[126.22310075400003,7.312405174000048]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205002,"adm4_en":"Mapawa","geo_level":"Bgy","len_crs":30384,"area_crs":52842364,"len_km":30,"area_km2":52},"id":1108205002},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.14043155800005,7.341157109000051],[126.12554958500006,7.345077915000048],[126.10165720900011,7.358041175000039],[126.09482120800011,7.352218626000023],[126.08488086700005,7.34981484200006],[126.08547518700004,7.337677729000061],[126.09405015900005,7.335846838000068],[126.10248811100007,7.327086459000039],[126.1121700870001,7.32744540300007],[126.10742447500003,7.31469677900003],[126.11768512600008,7.309067041000046],[126.14010245600004,7.302028542000075],[126.14337257200008,7.313982807000057],[126.1444673950001,7.326425437000069],[126.14043155800005,7.341157109000051]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205003,"adm4_en":"Poblacion","geo_level":"Bgy","len_crs":22000,"area_crs":22237141,"len_km":22,"area_km2":22},"id":1108205003},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22262782600002,7.33534847900006],[126.22268892800004,7.368079059000026],[126.16854951900007,7.356401403000064],[126.14506605300005,7.352267390000065],[126.14043155800005,7.341157109000051],[126.1444673950001,7.326425437000069],[126.16757922300008,7.323747433000051],[126.22310078500003,7.322288443000047],[126.22262782600002,7.33534847900006]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205004,"adm4_en":"New Albay","geo_level":"Bgy","len_crs":25722,"area_crs":35072772,"len_km":25,"area_km2":35},"id":1108205004},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22082002900004,7.399019778000024],[126.16708201000004,7.426584637000076],[126.16096043100003,7.427399020000053],[126.13452285600009,7.397324797000068],[126.135829209,7.386209988000076],[126.13894616100004,7.376047370000034],[126.14441351700009,7.373392559000022],[126.15718683900003,7.375483396000049],[126.17793506700004,7.375619640000028],[126.22182696000006,7.377852339000074],[126.22082002900004,7.399019778000024]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205005,"adm4_en":"Tupas","geo_level":"Bgy","len_crs":26069,"area_crs":39689629,"len_km":26,"area_km2":39},"id":1108205005},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22821264900006,7.271529252000049],[126.250561091,7.27516314500002],[126.27256536100003,7.282416777000037],[126.2962930000001,7.2861],[126.29616660300007,7.32542098600004],[126.29535864700006,7.338889993000068],[126.26664464600005,7.337162311000043],[126.22723381400012,7.33676820200003],[126.22262782600002,7.33534847900006],[126.22310078500003,7.322288443000047],[126.22310075400003,7.312405174000048],[126.22644868900011,7.294101517000059],[126.22821264900006,7.271529252000049]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205006,"adm4_en":"Bahi","geo_level":"Bgy","len_crs":28747,"area_crs":51200537,"len_km":28,"area_km2":51},"id":1108205006},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.135829209,7.386209988000076],[126.13122269100008,7.378255329000069],[126.12515833900011,7.377806118000025],[126.11192997800005,7.383965181000065],[126.10816756300005,7.389225968000062],[126.10583662700003,7.383499950000044],[126.1096902260001,7.370219250000048],[126.13760124900013,7.368209591000039],[126.14164021800002,7.352764832000049],[126.1444461200001,7.352964814000072],[126.14638341000013,7.361798854000028],[126.14441351700009,7.373392559000022],[126.13894616100004,7.376047370000034],[126.135829209,7.386209988000076]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205007,"adm4_en":"Cambagang","geo_level":"Bgy","len_crs":16258,"area_crs":6137153,"len_km":16,"area_km2":6},"id":1108205007},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22310078500003,7.322288443000047],[126.16757922300008,7.323747433000051],[126.1444673950001,7.326425437000069],[126.14337257200008,7.313982807000057],[126.15565110700004,7.309669041000063],[126.17610831300011,7.309606481000059],[126.22310075400003,7.312405174000048],[126.22310078500003,7.322288443000047]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205008,"adm4_en":"Coronobe","geo_level":"Bgy","len_crs":20242,"area_crs":12411675,"len_km":20,"area_km2":12},"id":1108205008},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.16096043100003,7.427399020000053],[126.13000466200005,7.433196931000055],[126.12508982300007,7.43115051600006],[126.12185702800004,7.41833504300007],[126.12054731300009,7.407251482000049],[126.11853328300002,7.395690342000022],[126.135829209,7.386209988000076],[126.13452285600009,7.397324797000068],[126.16096043100003,7.427399020000053]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205009,"adm4_en":"Katipunan","geo_level":"Bgy","len_crs":16165,"area_crs":12348212,"len_km":16,"area_km2":12},"id":1108205009},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22268892800004,7.368079059000026],[126.22260495100011,7.375632501000043],[126.19500201500013,7.37298778200005],[126.1514205750001,7.36174718700005],[126.14638341000013,7.361798854000028],[126.1444461200001,7.352964814000072],[126.14506605300005,7.352267390000065],[126.16854951900007,7.356401403000064],[126.22268892800004,7.368079059000026]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205010,"adm4_en":"Lahi","geo_level":"Bgy","len_crs":19560,"area_crs":9262481,"len_km":19,"area_km2":9},"id":1108205010},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.29535864700006,7.338889993000068],[126.29403068900001,7.351496064000058],[126.29353460300003,7.384353847000057],[126.29129779600008,7.383675694000032],[126.22082002900004,7.399019778000024],[126.22182696000006,7.377852339000074],[126.22260495100011,7.375632501000043],[126.22268892800004,7.368079059000026],[126.22262782600002,7.33534847900006],[126.22723381400012,7.33676820200003],[126.26664464600005,7.337162311000043],[126.29535864700006,7.338889993000068]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205011,"adm4_en":"Langgawisan","geo_level":"Bgy","len_crs":28436,"area_crs":47145761,"len_km":28,"area_km2":47},"id":1108205011},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.09424107600012,7.311540799000056],[126.08792179600006,7.321209298000043],[126.03859226000009,7.322863967000046],[126.03849251000007,7.306879538000031],[126.08417910800006,7.309157844000024],[126.09424107600012,7.311540799000056]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205012,"adm4_en":"Mabugnao","geo_level":"Bgy","len_crs":14854,"area_crs":8983912,"len_km":14,"area_km2":8},"id":1108205012},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.08488086700005,7.34981484200006],[126.0539273190001,7.354620575000069],[126.04381830500006,7.341662563000056],[126.03859226000009,7.322863967000046],[126.08792179600006,7.321209298000043],[126.09424107600012,7.311540799000056],[126.10742447500003,7.31469677900003],[126.1121700870001,7.32744540300007],[126.10248811100007,7.327086459000039],[126.09405015900005,7.335846838000068],[126.08547518700004,7.337677729000061],[126.08488086700005,7.34981484200006]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205013,"adm4_en":"Magcagong","geo_level":"Bgy","len_crs":22235,"area_crs":20294767,"len_km":22,"area_km2":20},"id":1108205013},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.10165720900011,7.358041175000039],[126.092293863,7.356104531000029],[126.06132032900005,7.363822872000071],[126.0539273190001,7.354620575000069],[126.08488086700005,7.34981484200006],[126.09482120800011,7.352218626000023],[126.10165720900011,7.358041175000039]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205014,"adm4_en":"Mahayahay","geo_level":"Bgy","len_crs":11519,"area_crs":4267761,"len_km":11,"area_km2":4},"id":1108205014},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.14010245600004,7.302028542000075],[126.11768512600008,7.309067041000046],[126.11432544400009,7.298624786000061],[126.10937396300005,7.298633386000062],[126.11824745900003,7.281522877000042],[126.12325592200011,7.282834666000042],[126.1339534330001,7.287911773000074],[126.14010245600004,7.302028542000075]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205015,"adm4_en":"Mauswagon","geo_level":"Bgy","len_crs":10345,"area_crs":6043576,"len_km":10,"area_km2":6},"id":1108205015},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.11768512600008,7.309067041000046],[126.10742447500003,7.31469677900003],[126.09424107600012,7.311540799000056],[126.08417910800006,7.309157844000024],[126.03849251000007,7.306879538000031],[126.03789877200006,7.28903752900004],[126.08782097000004,7.297237534000033],[126.10937396300005,7.298633386000062],[126.11432544400009,7.298624786000061],[126.11768512600008,7.309067041000046]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205016,"adm4_en":"New Katipunan","geo_level":"Bgy","len_crs":20724,"area_crs":14059401,"len_km":20,"area_km2":14},"id":1108205016},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.135829209,7.386209988000076],[126.11853328300002,7.395690342000022],[126.10816756300005,7.389225968000062],[126.11192997800005,7.383965181000065],[126.12515833900011,7.377806118000025],[126.13122269100008,7.378255329000069],[126.135829209,7.386209988000076]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205017,"adm4_en":"New Manay","geo_level":"Bgy","len_crs":7560,"area_crs":3520041,"len_km":7,"area_km2":3},"id":1108205017},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.11967900900005,7.258708042000024],[126.12325592200011,7.282834666000042],[126.11824745900003,7.281522877000042],[126.109395188,7.27940951800002],[126.10484952700006,7.264421566000065],[126.11967900900005,7.258708042000024]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205018,"adm4_en":"New Panay","geo_level":"Bgy","len_crs":7769,"area_crs":3470291,"len_km":7,"area_km2":3},"id":1108205018},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.12054731300009,7.407251482000049],[126.09698914500005,7.403054589000019],[126.09122710500004,7.403717846000061],[126.0751044640001,7.412728439000034],[126.071978929,7.382533989000025],[126.10583662700003,7.383499950000044],[126.10816756300005,7.389225968000062],[126.11853328300002,7.395690342000022],[126.12054731300009,7.407251482000049]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205019,"adm4_en":"Paloc","geo_level":"Bgy","len_crs":15781,"area_crs":11664558,"len_km":15,"area_km2":11},"id":1108205019},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.1444461200001,7.352964814000072],[126.14164021800002,7.352764832000049],[126.13760124900013,7.368209591000039],[126.1096902260001,7.370219250000048],[126.10165720900011,7.358041175000039],[126.12554958500006,7.345077915000048],[126.14043155800005,7.341157109000051],[126.14506605300005,7.352267390000065],[126.1444461200001,7.352964814000072]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205020,"adm4_en":"Pamintaran","geo_level":"Bgy","len_crs":13410,"area_crs":9869184,"len_km":13,"area_km2":9},"id":1108205020},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.1096902260001,7.370219250000048],[126.10583662700003,7.383499950000044],[126.071978929,7.382533989000025],[126.07129589500005,7.377028716000039],[126.06132032900005,7.363822872000071],[126.092293863,7.356104531000029],[126.10165720900011,7.358041175000039],[126.1096902260001,7.370219250000048]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205021,"adm4_en":"Parasanon","geo_level":"Bgy","len_crs":14371,"area_crs":11347421,"len_km":14,"area_km2":11},"id":1108205021},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.22260495100011,7.375632501000043],[126.22182696000006,7.377852339000074],[126.17793506700004,7.375619640000028],[126.15718683900003,7.375483396000049],[126.14441351700009,7.373392559000022],[126.14638341000013,7.361798854000028],[126.1514205750001,7.36174718700005],[126.19500201500013,7.37298778200005],[126.22260495100011,7.375632501000043]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205022,"adm4_en":"Talian","geo_level":"Bgy","len_crs":19080,"area_crs":6233962,"len_km":19,"area_km2":6},"id":1108205022},
+      {"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[126.12185702800004,7.41833504300007],[126.1026,7.426277],[126.07713114300007,7.432533883000075],[126.0751044640001,7.412728439000034],[126.09122710500004,7.403717846000061],[126.09698914500005,7.403054589000019],[126.12054731300009,7.407251482000049],[126.12185702800004,7.41833504300007]]]},"properties":{"adm1_psgc":1100000000,"adm2_psgc":1108200000,"adm3_psgc":1108205000,"adm4_psgc":1108205023,"adm4_en":"Tandik","geo_level":"Bgy","len_crs":13996,"area_crs":11241789,"len_km":13,"area_km2":11},"id":1108205023},
+    ]
+    };
+
+    // Store the GeoJSON layer reference
+    let geojsonLayer = null;
+    
+    // Style functions
+    function styleBarangay(feature) {
+      return {
+        fillColor: '#2E7D32',
+        weight: 2,
+        opacity: 1,
+        color: '#2E7D32',
+        dashArray: '3',
+        fillOpacity: 0.5
+      };
+    }
+
+    function highlightFeature(e) {
+      const layer = e.target;
+      layer.setStyle({
+        weight: 3,
+        color: '#FF5722',
+        dashArray: '',
+        fillOpacity: 0.7
+      });
+      layer.bringToFront();
+    }
+
+    function resetHighlight(e) {
+      if (geojsonLayer) geojsonLayer.resetStyle(e.target);
+    }
+
+    function onEachFeature(feature, layer) {
+      layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: function(e) {
+          // On click, show crop data for this barangay
+          showBarangay(feature);
+          const selector = document.getElementById('barangaySelector');
+          if (selector) selector.value = feature.properties.adm4_en;
+        }
+      });
+    }
+
+    // Function to show a single barangay
+    function showBarangay(feature) {
+      // Clear any existing layers
+      if (geojsonLayer) {
+        map.removeLayer(geojsonLayer);
+      }
+      
+      // Create a feature collection with just this barangay
+      const singleFeature = {
+        type: "FeatureCollection",
+        features: [feature]
+      };
+      
+      // Add the single barangay to the map
+      geojsonLayer = L.geoJson(singleFeature, {
+        style: styleBarangay,
+        onEachFeature: onEachFeature
+      }).addTo(map);
+      
+      // Zoom to the barangay
+      map.fitBounds(geojsonLayer.getBounds());
+      
+      // Show crop data
+      showCropData(feature.properties.adm4_en);
+      
+      // Open the slide panel
+      openSlidePanel();
+    }
+
+    // Function to show crop data for a barangay
+    function showCropData(barangayName) {
+      const data = barangayCropData[barangayName] || barangayCropData["Bagong Silang"];
+      
+      // Update title
+      const barangayTitleElement = document.getElementById('barangayTitle');
+      if (barangayTitleElement) {
+        barangayTitleElement.textContent = barangayName;
+      }
+      
+      // Update pie chart
+      if (window.pieChart) {
+        const chartData = data.map(item => ({
+          value: item.percentage,
+          name: item.crop,
+          itemStyle: { color: item.color }
+        }));
+        
+        window.pieChart.setOption({
+          tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+          series: [{
+            name: 'Crop Distribution',
+            type: 'pie',
+            radius: ['45%', '70%'],
+            avoidLabelOverlap: false,
+            itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+            label: { show: false, position: 'center' },
+            emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
+            labelLine: { show: false },
+            data: chartData
+          }]
+        });
+      }
+      
+      // Update legend
+      const legendElement = document.getElementById('cropLegend');
+      if (legendElement) {
+        const legendHtml = data.map(item => `
+          <div class="crop-legend-item">
+            <span class="crop-legend-color" style="background-color:${item.color}"></span>
+            <span>${item.crop} (${item.percentage}%)</span>
+          </div>
+        `).join('');
+        legendElement.innerHTML = legendHtml;
+      }
+      
+      // Show additional barangay info
+      const feature = maragusanGeoJSON.features.find(f => f.properties.adm4_en === barangayName);
+      if (feature) {
+        const areaElement = document.getElementById('barangayArea');
+        const populationElement = document.getElementById('barangayPopulation');
+        
+        if (areaElement) areaElement.textContent = `${feature.properties.area_km2} km²`;
+        if (populationElement) populationElement.textContent = Math.floor(feature.properties.area_km2 * 500).toLocaleString();
+      }
+    }
+
+    // Slide panel functionality
+    const slidePanel = document.getElementById('slidePanel');
+    const slidePanelHandle = document.getElementById('slidePanelHandle');
+    let isPanelOpen = false;
+    
+    function openSlidePanel() {
+      if (slidePanel) slidePanel.classList.add('open');
+      isPanelOpen = true;
+    }
+    
+    function closeSlidePanel() {
+      if (slidePanel) slidePanel.classList.remove('open');
+      isPanelOpen = false;
+    }
+    
+    function toggleSlidePanel() {
+      if (isPanelOpen) {
+        closeSlidePanel();
+      } else {
+        openSlidePanel();
+      }
+    }
+    
+    // Add click handler to the panel handle
+    if (slidePanelHandle) {
+      slidePanelHandle.addEventListener('click', toggleSlidePanel);
+    }
+    
+    // Add swipe functionality for touch devices
+    if (slidePanel) {
+      let touchStartY = 0;
+      let touchEndY = 0;
+      
+      slidePanel.addEventListener('touchstart', function(e) {
+        touchStartY = e.changedTouches[0].screenY;
+      }, false);
+      
+      slidePanel.addEventListener('touchend', function(e) {
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+      }, false);
+      
+      function handleSwipe() {
+        // Swipe down to close
+        if (touchEndY - touchStartY > 50 && isPanelOpen) {
+          closeSlidePanel();
+        }
+        // Swipe up to open
+        else if (touchStartY - touchEndY > 50 && !isPanelOpen) {
+          openSlidePanel();
+        }
+      }
+    }
+
+    // Populate barangay selector
+    const selector = document.getElementById('barangaySelector');
+    if (selector) {
+      maragusanGeoJSON.features.forEach(feature => {
+        const option = document.createElement('option');
+        option.value = feature.properties.adm4_en;
+        option.textContent = feature.properties.adm4_en;
+        selector.appendChild(option);
+      });
+
+      // Barangay selector change handler
+      selector.addEventListener('change', function() {
+        const selectedBarangay = this.value;
+        if (selectedBarangay) {
+          // Find the selected barangay
+          const selectedFeature = maragusanGeoJSON.features.find(
+            f => f.properties.adm4_en === selectedBarangay
+          );
+          
+          if (selectedFeature) {
+            showBarangay(selectedFeature);
+          }
+        }
+      });
+    }
+
+    // Reset map button
+    const resetMapButton = document.getElementById('resetMap');
+    if (resetMapButton) {
+      resetMapButton.addEventListener('click', function() {
+        if (geojsonLayer) {
+          map.removeLayer(geojsonLayer);
+          geojsonLayer = null;
+        }
+        const selector = document.getElementById('barangaySelector');
+        if (selector) selector.value = '';
+        closeSlidePanel();
+        map.setView([7.3167, 126.1167], 12);
+      });
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriTrack - Farm Data Input</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2E7D32',
+                        secondary: '#8BC34A'
+                    },
+                    borderRadius: {
+                        'button': '8px'
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        // Simple global initialization
+        const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+        
+        // Initialize immediately when Supabase is available
+        if (typeof supabase !== 'undefined') {
+            window.supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+            console.log('✅ Supabase client initialized immediately');
+        } else {
+            // Fallback: wait for library to load
+            document.addEventListener('DOMContentLoaded', function() {
+                window.supabaseClient = supabase.createClient(supabaseUrl, supabaseAnonKey);
+                console.log('✅ Supabase client initialized after DOM load');
+            });
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -webkit-appearance: textfield;
+            -moz-appearance: textfield;
+            -appearance: textfield;
+        }
+        .bg-green-gradient {
+            background: linear-gradient(to bottom, #2E7D32, rgba(46, 125, 50, 0.8));
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .upload-box {
+            transition: all 0.3s ease;
+        }
+        .upload-box:hover {
+            border-color: #2E7D32;
+            background-color: rgba(139, 195, 74, 0.05);
+        }
+        .email-warning {
+            display: none;
+            color: #e53e3e;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+        .camera-btn, .gallery-btn {
+            transition: all 0.3s ease;
+        }
+        .camera-btn:active, .gallery-btn:active {
+            transform: scale(0.95);
+        }
+        .crop-section {
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            background: white;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .crop-section:hover {
+            border-color: #2E7D32;
+        }
+        .remove-crop-btn {
+            transition: all 0.3s ease;
+        }
+        .remove-crop-btn:hover {
+            background-color: #ef4444;
+            transform: scale(1.05);
+        }
+        /* Mobile-specific styles */
+        .mobile-file-input {
+            position: fixed;
+            top: -1000px;
+            left: -1000px;
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* Fix for unit dropdowns */
+        .unit-select-wrapper {
+            min-width: 120px;
+        }
+        .unit-select {
+            border-left: 0;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+        .number-input {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            border-right: 0;
+        }
+        @media (max-width: 640px) {
+            .upload-options {
+                flex-direction: column;
+            }
+            .crop-section {
+                padding: 1rem;
+            }
+            .unit-select-wrapper {
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Nav Bar -->
+    <nav class="bg-green-gradient text-white fixed top-0 w-full z-50 shadow-md">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="font-['Pacifico'] text-2xl tracking-wide">AgriTrack</div>
+            <div class="flex items-center space-x-3">
+                <a href="index.html" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-button transition-colors text-sm">Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="pt-16 pb-20 px-4 max-w-2xl mx-auto">
+        <!-- Error Alert -->
+        <div id="formError" class="hidden text-sm font-medium bg-red-100 text-red-700 border border-red-300 px-4 py-2 rounded-md mb-4 transition-all duration-300 ease-in-out">
+            Please fill out all required information.
+        </div>
+
+        <!-- Success Alert -->
+        <div id="formSuccess" class="hidden text-sm font-medium bg-green-100 text-green-700 border border-green-300 px-4 py-2 rounded-md mb-4 transition-all duration-300 ease-in-out">
+            Form submitted successfully!
+        </div>
+
+        <h1 class="text-2xl font-bold mb-6 text-center">Add Farm Data</h1>
+        
+        <form id="farmDataForm" class="space-y-5">
+            <!-- Farmer Information Section -->
+            <div class="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Farmer Information</h2>
+                    <span class="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">Required</span>
+                </div>
+                <div class="mb-4">
+                    <label for="fullName" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input type="text" id="fullName" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter your full name">
+                </div>
+                <div class="mb-2">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <input type="email" id="email" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="example@gmail.com">
+                    <div id="emailWarning" class="email-warning">
+                        <i class="ri-error-warning-line"></i> Please use a Gmail account only
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 italic">Your personal information is protected and will only be used for farm analytics.</p>
+            </div>
+
+            <!-- Farm Location Section -->
+            <div class="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
+                <h2 class="text-lg font-semibold mb-4">Farm Location</h2>
+                <div class="mb-4">
+                    <label for="barangay" class="block text-sm font-medium text-gray-700 mb-1">Barangay <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <select id="barangay" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8" required>
+                            <option value="" disabled selected>Select Barangay</option>
+                            <option value="bagong_silang">Bagong Silang</option>
+                            <option value="bahi">Bahi</option>
+                            <option value="cambagang">Cambagang</option>
+                            <option value="coronobe">Coronobe</option>
+                            <option value="katipunan">Katipunan</option>
+                            <option value="lahi">Lahi</option>
+                            <option value="langgawisan">Langgawisan</option>
+                            <option value="mabugnao">Mabugnao</option>
+                            <option value="magcagong">Magcagong</option>
+                            <option value="mahayahay">Mahayahay</option>
+                            <option value="mapawa">Mapawa</option>
+                            <option value="maragusan">Maragusan (Pob.)</option>
+                            <option value ="mauswagon">Mauswagon</option>
+                            <option value="new_albay">New Albay</option>
+                            <option value="new_katipunan">New Katipunan</option>
+                            <option value="new_manay">New Manay</option>
+                            <option value="new_panay">New Panay</option>
+                            
+                            <option value="paloc">Paloc</option>
+                            <option value="pantar">Pamintaran</option>
+                            <option value="pantar">Parasanon</option>
+                              <option value="talian">Talian</option>
+                            <option value="tandik">Tandik</option>
+                            <option value="tigbao">Tigbao</option>
+                            <option value="tupas">Tupas</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="ri-arrow-down-s-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-500 italic mb-4">
+                    <i class="ri-information-line"></i> Can't find your barangay? Contact support to add it to our system.
+                </div>
+            </div>
+
+            <!-- Farm Details Section -->
+            <div class="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
+                <h2 class="text-lg font-semibold mb-4">Farm Details</h2>
+                <div class="mb-4">
+                    <label for="landArea" class="block text-sm font-medium text-gray-700 mb-1">Total Land Area <span class="text-red-500">*</span></label>
+                    <div class="flex">
+                        <input type="number" id="landArea" min="0" step="0.01" class="flex-1 px-3 py-2 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter area" required>
+                        <div class="relative unit-select-wrapper">
+                            <select id="areaUnit" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                <option value="hectares" selected>Hectares</option>
+                                <option value="sqm">Square Meters</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <i class="ri-arrow-down-s-line text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="ownershipType" class="block text-sm font-medium text-gray-700 mb-1">Land Ownership Type</label>
+                    <div class="relative">
+                        <select id="ownershipType" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8">
+                            <option value="" selected>Select ownership type</option>
+                            <option value="owned">Owned</option>
+                            <option value="leased">Leased</option>
+                            <option value="government">Government Land</option>
+                            <option value="cooperative">Cooperative</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="ri-arrow-down-s-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label for="terrainType" class="block text-sm font-medium text-gray-700 mb-1">Type of Terrain</label>
+                    <div class="relative">
+                        <select id="terrainType" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8">
+                            <option value="" selected>Select terrain type</option>
+                            <option value="flat">Flat</option>
+                            <option value="hilly">Hilly</option>
+                            <option value="terraced">Terraced</option>
+                            <option value="mixed">Mixed</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="ri-arrow-down-s-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crop Information Section -->
+            <div class="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Crop Information</h2>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">Multiple crops allowed</span>
+                        <button type="button" id="addCropBtn" class="bg-primary hover:bg-green-700 text-white px-4 py-2 rounded-button text-sm font-medium transition-colors flex items-center gap-1">
+                            <i class="ri-add-line"></i> Add Crop
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Crop Sections Container -->
+                <div id="cropSections">
+                    <!-- Default first crop section -->
+                    <div class="crop-section" data-crop-index="0">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-medium text-gray-700">Crop #1</h3>
+                            <button type="button" class="remove-crop-btn bg-red-500 text-white p-2 rounded-full transition-colors opacity-50 cursor-not-allowed" disabled>
+                                <i class="ri-close-line text-sm"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Crop <span class="text-red-500">*</span></label>
+                            <div class="relative">
+                                <select name="cropType[]" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8" required>
+                                    <option value="" disabled selected>Select Crop</option>
+                                    <optgroup label="Vegetables">
+                                        <option value="pechay">Pechay</option>
+                                        <option value="chinese_cabbage">Chinese Cabbage</option>
+                                        <option value="lettuce">Lettuce</option>
+                                        <option value="carrots">Carrots</option>
+                                        <option value="bell_pepper">Bell Pepper</option>
+                                        <option value="chili_pepper">Chili Pepper</option>
+                                        <option value="string_beans">String Beans</option>
+                                        <option value="okra">Okra</option>
+                                        <option value="eggplant">Eggplant</option>
+                                        <option value="ampalaya">Ampalaya (Bitter Melon)</option>
+                                        <option value="squash">Squash</option>
+                                        <option value="cucumber">Cucumber</option>
+                                        <option value="tomato">Tomato</option>
+                                        <option value="sweet_potato">Sweet Potato (Camote)</option>
+                                        <option value="gabi">Gabi (Taro)</option>
+                                        <option value="kangkong">Kangkong (Water Spinach)</option>
+                                    </optgroup>
+                                    <optgroup label="Fruits">
+                                        <option value="banana_saba">Banana (Saba)</option>
+                                        <option value="banana_lakatan">Banana (Lakatan)</option>
+                                        <option value="papaya">Papaya</option>
+                                        <option value="pineapple">Pineapple</option>
+                                        <option value="mango">Mango</option>
+                                        <option value="calamansi">Calamansi</option>
+                                        <option value="coconut">Coconut</option>
+                                        <option value="durian">Durian</option>
+                                        <option value="rambutan">Rambutan</option>
+                                        <option value="lanzones">Lanzones</option>
+                                        <option value="jackfruit">Jackfruit</option>
+                                    </optgroup>
+                                    <optgroup label="Staples">
+                                        <option value="rice">Rice (Palay)</option>
+                                        <option value="corn">Corn (Maize)</option>
+                                        <option value="cassava">Cassava</option>
+                                    </optgroup>
+                                    <optgroup label="Other Crops">
+                                        <option value="coffee">Coffee</option>
+                                        <option value="cacao">Cacao</option>
+                                        <option value="abaca">Abaca</option>
+                                    </optgroup>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Area Planted <span class="text-red-500">*</span></label>
+                            <div class="flex">
+                                <input type="number" name="areaPlanted[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm"placeholder="Enter planted area" required>
+                                <div class="relative unit-select-wrapper">
+                                    <select name="plantedAreaUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                        <option value="hectares" selected>Hectares</option>
+                                        <option value="sqm">Square Meters</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                        <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Date Planted <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <input type="date" name="datePlanted[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                        <i class="ri-calendar-line text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Expected Harvest Date <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <input type="date" name="harvestDate[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                        <i class="ri-calendar-line text-gray-400"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Post Production Harvest Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-200">
+                            <h4 class="text-md font-medium text-gray-700 mb-3">Post Production Harvest (Optional)</h4>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Harvest Yield</label>
+                                <div class="flex">
+                                    <input type="number" name="harvestYield[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter yield">
+                                    <div class="relative unit-select-wrapper">
+                                        <select name="yieldUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                            <option value="kg" selected>Kilograms</option>
+                                            <option value="tons">Tons</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Identity Verification Section -->
+            <div class="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Identity Verification</h2>
+                    <span class="text-xs text-gray-500 px-2 py-1 bg-gray-100 rounded-full">Required</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-4">To verify your identity as a legitimate farmer, please upload a clear photo of your government-issued ID.</p>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Upload ID Photo</label>
+                    
+                    <!-- Mobile-friendly file inputs -->
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="mobile-file-input">
+                    <input type="file" id="galleryInput" accept="image/*" class="mobile-file-input">
+                    
+                    <!-- Upload Options -->
+                    <div class="upload-options flex gap-4 mb-4">
+                        <label for="galleryInput" class="gallery-btn flex-1 flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white hover:bg-gray-50 hover:border-primary transition-colors cursor-pointer">
+                            <i class="ri-image-line text-3xl text-primary mb-2"></i>
+                            <span class="text-sm font-medium">Choose from Gallery</span>
+                        </label>
+                    </div>
+                    
+                    
+                    <!-- Preview Container -->
+                    <div id="previewContainer" class="hidden mt-4">
+                        <p class="text-sm text-gray-700 mb-2">ID Photo Preview:</p>
+                        <div class="relative border-2 border-dashed border-gray-300 rounded-lg p-4 inline-block bg-gray-50">
+                            <img id="previewImage" class="h-48 object-contain mx-auto rounded" />
+                            <button id="removeImage" type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-md">
+                                <i class="ri-close-line text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Status -->
+                    <div id="uploadStatus" class="hidden mt-3 text-sm">
+                        <div class="flex items-center text-green-600">
+                            <i class="ri-checkbox-circle-fill mr-2"></i>
+                            <span>Photo successfully uploaded</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <p id="uploadError" class="text-red-500 text-xs mt-2 hidden"></p>
+                </div>
+                
+                <p class="text-xs text-gray-500 italic">Your ID will be reviewed by our admin team to verify your farmer status. This helps us maintain the integrity of our agricultural database.</p>
+            </div>
+<!-- Progress Bar - Add this to your form -->
+<div id="progressBar" class="hidden mt-4">
+    <div class="bg-gray-200 rounded-full h-2">
+        <div id="progressFill" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+    </div>
+    <p id="progressText" class="text-sm text-gray-600 mt-1">Starting submission...</p>
+</div>
+            <!-- Submit Button -->
+            <div class="flex flex-col">
+                <button type="submit" class="bg-primary hover:bg-green-700 text-white py-3 rounded-button font-medium cursor-pointer transition-colors" id="submitButton">
+                    Submit Farm Data
+                </button>
+            </div>
+        </form>
+    </main>
+
+    <!-- Success Modal (Hidden by default) -->
+    <div id="successModal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div class="bg-white rounded-lg p-6 w-4/5 max-w-md z-10">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                <i class="ri-check-line ri-2x text-primary"></i>
+            </div>
+            <h3 class="text-xl font-bold text-center mb-2">Submission Successful!</h3>
+            <p class="text-gray-600 text-center mb-6">Your farm data has been successfully submitted. Thank you for contributing to our agricultural database.</p>
+            <button id="closeModal" class="w-full bg-primary text-white py-3 rounded-button font-medium cursor-pointer hover:bg-green-700 transition-colors">Close</button>
+        </div>
+    </div>
+
+    <script>
+    // Initialize Supabase Client (CRITICAL - WAS MISSING)
+    
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+    window.supabaseClient = supabaseClient;
+
+    // SINGLE testConnection function - no duplicates!
+    async function testConnection() {
+        console.log('🔌 Starting connection test...');
+        
+        const client = window.supabaseClient;
+        
+        if (!client) {
+            alert('❌ Supabase client not ready.');
+            return;
+        }
+        
+        try {
+            console.log('Testing with client:', client);
+            
+            const { data, error } = await client.storage.listBuckets();
+            
+            if (error) {
+                console.error('❌ Storage error:', error);
+                alert('Error: ' + error.message);
+            } else {
+                console.log('✅ Connected! Buckets:', data);
+                alert('🎉 SUCCESS! Connected to Supabase!');
+            }
+            
+        } catch (error) {
+            console.error('❌ Connection failed:', error);
+            alert('Connection failed: ' + error.message);
+        }
+    }
+
+    // DEBUG: Check form elements exist
+    function debugFormElements() {
+        console.log('🔍 Checking form elements:');
+        const elements = ['fullName', 'email', 'barangay', 'landArea', 'areaUnit', 'ownershipType', 'terrainType'];
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            console.log(`${id}:`, element ? 'FOUND' : 'MISSING', element);
+        });
+    }
+
+    // File upload function
+    async function uploadIDPhoto(file) {
+        try {
+            console.log('📤 Uploading file...');
+            
+            const fileExt = file.name.split('.').pop();
+            const fileName = `submissions/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+            
+            const { data, error } = await window.supabaseClient.storage
+                .from('id-photos')
+                .upload(fileName, file);
+            
+            if (error) throw new Error(`Upload failed: ${error.message}`);
+            
+            console.log('✅ File uploaded:', fileName);
+            return fileName;
+            
+        } catch (error) {
+            console.error('❌ Upload failed:', error);
+            throw error;
+        }
+    }
+
+    // Collect all form data
+    function collectFormData() {
+        // DEBUG: Check elements first
+        debugFormElements();
+        
+        const formData = {
+            farmer: {
+                full_name: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                barangay: document.getElementById('barangay').value
+            },
+            farm: {
+                land_area: parseFloat(document.getElementById('landArea').value),
+                area_unit: document.getElementById('areaUnit').value,
+                ownership_type: document.getElementById('ownershipType').value || null,
+                terrain_type: document.getElementById('terrainType').value || null,
+                farm_status: 'pending'
+            },
+            crops: []
+        };
+        
+        // Collect crop data
+        const cropSections = document.querySelectorAll('.crop-section');
+        cropSections.forEach(section => {
+            const cropData = {
+                crop_type: section.querySelector('select[name="cropType[]"]').value,
+                area_planted: parseFloat(section.querySelector('input[name="areaPlanted[]"]').value),
+                planted_area_unit: section.querySelector('select[name="plantedAreaUnit[]"]').value,
+                date_planted: section.querySelector('input[name="datePlanted[]"]').value,
+                expected_harvest_date: section.querySelector('input[name="harvestDate[]"]').value,
+                harvest_yield: section.querySelector('input[name="harvestYield[]"]').value ? 
+                              parseFloat(section.querySelector('input[name="harvestYield[]"]').value) : null,
+                yield_unit: section.querySelector('select[name="yieldUnit[]"]').value || null
+            };
+            formData.crops.push(cropData);
+        });
+        
+        return formData;
+    }
+
+    // CORRECTED SUBMISSION FUNCTION - FIXED BARANGAY ISSUE
+    async function submitToSupabase(formData, idPhotoPath) {
+        try {
+            console.log('🚀 Starting database submission...');
+            
+            // 1. Test connection first
+            console.log('🔍 Testing database connection...');
+            const { error: testError } = await window.supabaseClient
+                .from('farmers')
+                .select('count')
+                .limit(1);
+                
+            if (testError) {
+                console.warn('⚠️ Initial connection test failed, but continuing:', testError.message);
+            } else {
+                console.log('✅ Database connection OK');
+            }
+            
+            // 2. Insert farmer - SIMPLIFIED APPROACH
+            console.log('👨‍🌾 Inserting farmer:', formData.farmer);
+            
+            // FIX: Use simple insert without complex parameters
+            const { data: farmerData, error: farmerError } = await window.supabaseClient
+                .from('farmers')
+                .insert([
+                    {
+                        full_name: formData.farmer.full_name,
+                        email: formData.farmer.email,
+                        barangay: formData.farmer.barangay
+                    }
+                ])
+                .select();
+            
+            if (farmerError) {
+                console.error('❌ Farmer insertion error:', farmerError);
+                
+                // SPECIAL HANDLING FOR BARANGAY COLUMN ISSUE
+                if (farmerError.message.includes('barangay') && farmerError.message.includes('schema cache')) {
+                    throw new Error('Database configuration issue. Please contact administrator to fix the barangay column.');
+                }
+                
+                throw new Error('Farmer insertion failed: ' + farmerError.message);
+            }
+            
+            if (!farmerData || !farmerData[0]) {
+                throw new Error('Farmer insertion succeeded but no data returned');
+            }
+            
+            const farmer = farmerData[0];
+            console.log('✅ Farmer inserted:', farmer.id);
+            
+            // 3. Insert farm
+            console.log('🏡 Inserting farm...');
+            const farmData = {
+                ...formData.farm,
+                farmer_id: farmer.id
+            };
+            
+            const { data: farmDataResult, error: farmError } = await window.supabaseClient
+                .from('farms')
+                .insert([farmData])
+                .select();
+                
+            if (farmError) {
+                console.error('❌ Farm insertion error:', farmError);
+                throw new Error('Farm insertion failed: ' + farmError.message);
+            }
+            if (!farmDataResult || !farmDataResult[0]) throw new Error('No farm data returned');
+            
+            const farm = farmDataResult[0];
+            console.log('✅ Farm inserted:', farm.id);
+            
+            // 4. Insert crops
+            console.log('🌱 Inserting crops...');
+            const cropsWithFarmId = formData.crops.map(crop => ({
+                ...crop,
+                farm_id: farm.id
+            }));
+            
+            if (cropsWithFarmId.length > 0) {
+                const { data: cropsData, error: cropsError } = await window.supabaseClient
+                    .from('crops')
+                    .insert(cropsWithFarmId)
+                    .select();
+                
+                if (cropsError) {
+                    console.warn('⚠️ Crops insertion failed:', cropsError);
+                } else {
+                    console.log('✅ Crops inserted successfully:', cropsData);
+                }
+            }
+            
+            // 5. Insert verification
+            if (idPhotoPath) {
+                console.log('📸 Inserting verification...');
+                const { error: verificationError } = await window.supabaseClient
+                    .from('identity_verifications')
+                    .insert([{
+                        farmer_id: farmer.id,
+                        id_photo_path: idPhotoPath,
+                        verification_status: 'pending'
+                    }]);
+                
+                if (verificationError) console.warn('⚠️ Verification failed:', verificationError);
+                else console.log('✅ Verification inserted');
+            }
+            
+            console.log('🎉 All operations completed!');
+            return { success: true, farmer_id: farmer.id, farm_id: farm.id };
+            
+        } catch (error) {
+            console.error('❌ Submission failed:', error);
+            
+            // Provide more user-friendly error messages
+            if (error.message.includes('barangay') && error.message.includes('schema cache')) {
+                throw new Error('System configuration error. Please contact support to fix the database setup.');
+            }
+            
+            throw error;
+        }
+    }
+
+    // Progress tracking
+    function updateProgress(percentage, message) {
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        
+        if (progressBar) progressBar.classList.remove('hidden');
+        if (progressFill) progressFill.style.width = percentage + '%';
+        if (progressText) progressText.textContent = message;
+    }
+
+    function hideProgress() {
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) progressBar.classList.add('hidden');
+    }
+
+    // Validate required fields
+    function validateRequiredFields() {
+        const requiredFields = [
+            document.getElementById('fullName'),
+            document.getElementById('email'),
+            document.getElementById('barangay'),
+            document.getElementById('landArea')
+        ];
+        
+        for (let field of requiredFields) {
+            if (!field.value.trim()) {
+                field.focus();
+                return false;
+            }
+        }
+        
+        const cropSections = document.querySelectorAll('.crop-section');
+        for (let section of cropSections) {
+            const cropType = section.querySelector('select[name="cropType[]"]');
+            const areaPlanted = section.querySelector('input[name="areaPlanted[]"]');
+            const datePlanted = section.querySelector('input[name="datePlanted[]"]');
+            const harvestDate = section.querySelector('input[name="harvestDate[]"]');
+            
+            if (!cropType.value || !areaPlanted.value || !datePlanted.value || !harvestDate.value) {
+                cropType.focus();
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    // Global variables
+    let cropCounter = 1;
+    let currentFile = null;
+
+    // Function to add new crop section
+    function addCropSection() {
+        console.log("Add Crop button clicked!");
+        
+        const cropSections = document.getElementById('cropSections');
+        if (!cropSections) {
+            console.error("Crop sections container not found!");
+            return;
+        }
+        
+        const newCropSection = document.createElement('div');
+        newCropSection.className = 'crop-section';
+        newCropSection.setAttribute('data-crop-index', cropCounter);
+        
+        newCropSection.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-medium text-gray-700">Crop #${cropCounter + 1}</h3>
+                <button type="button" class="remove-crop-btn bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-colors">
+                    <i class="ri-close-line text-sm"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Crop <span class="text-red-500">*</span></label>
+                <div class="relative">
+                    <select name="cropType[]" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8" required>
+                        <option value="" disabled selected>Select Crop </option>
+                        <optgroup label="Vegetables">
+                            <option value="pechay">Pechay</option>
+                            <option value="chinese_cabbage">Chinese Cabbage</option>
+                            <option value="lettuce">Lettuce</option>
+                            <option value="carrots">Carrots</option>
+                            <option value="bell_pepper">Bell Pepper</option>
+                            <option value="chili_pepper">Chili Pepper</option>
+                            <option value="string_beans">String Beans</option>
+                            <option value="okra">Okra</option>
+                            <option value="eggplant">Eggplant</option>
+                            <option value="ampalaya">Ampalaya (Bitter Melon)</option>
+                            <option value="squash">Squash</option>
+                            <option value="cucumber">Cucumber</option>
+                            <option value="tomato">Tomato</option>
+                            <option value="sweet_potato">Sweet Potato (Camote)</option>
+                            <option value="gabi">Gabi (Taro)</option>
+                            <option value="kangkong">Kangkong (Water Spinach)</option>
+                        </optgroup>
+                        <optgroup label="Fruits">
+                            <option value="banana_saba">Banana (Saba)</option>
+                            <option value="banana_lakatan">Banana (Lakatan)</option>
+                            <option value="papaya">Papaya</option>
+                            <option value="pineapple">Pineapple</option>
+                            <option value="mango">Mango</option>
+                            <option value="calamansi">Calamansi</option>
+                            <option value="coconut">Coconut</option>
+                            <option value="durian">Durian</option>
+                            <option value="rambutan">Rambutan</option>
+                            <option value="lanzones">Lanzones</option>
+                            <option value="jackfruit">Jackfruit</option>
+                        </optgroup>
+                        <optgroup label="Staples">
+                            <option value="rice">Rice (Palay)</option>
+                            <option value="corn">Corn (Maize)</option>
+                            <option value="cassava">Cassava</option>
+                        </optgroup>
+                        <optgroup label="Other Crops">
+                            <option value="coffee">Coffee</option>
+                            <option value="cacao">Cacao</option>
+                            <option value="abaca">Abaca</option>
+                        </optgroup>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <i class="ri-arrow-down-s-line text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Area Planted <span class="text-red-500">*</span></label>
+                <div class="flex">
+                    <input type="number" name="areaPlanted[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter planted area" required>
+                    <div class="relative unit-select-wrapper">
+                        <select name="plantedAreaUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                            <option value="hectares" selected>Hectares</option>
+                            <option value="sqm">Square Meters</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                            <i class="ri-arrow-down-s-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Date Planted <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="date" name="datePlanted[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="ri-calendar-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Expected Harvest Date <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <input type="date" name="harvestDate[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                            <i class="ri-calendar-line text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Post Production Harvest Section -->
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <h4 class="text-md font-medium text-gray-700 mb-3">Post Production Harvest (Optional)</h4>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Harvest Yield</label>
+                    <div class="flex">
+                        <input type="number" name="harvestYield[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter yield">
+                        <div class="relative unit-select-wrapper">
+                            <select name="yieldUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                <option value="kg" selected>Kilograms</option>
+                                <option value="tons">Tons</option>
+                            </select>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                <i class="ri-arrow-down-s-line text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        cropSections.appendChild(newCropSection);
+        
+        const removeBtn = newCropSection.querySelector('.remove-crop-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                removeCropSection(this);
+            });
+        }
+        
+        cropCounter++;
+        updateRemoveButtons();
+        newCropSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Function to remove crop section
+    function removeCropSection(button) {
+        const cropSection = button.closest('.crop-section');
+        if (cropSection) {
+            cropSection.remove();
+            updateRemoveButtons();
+        }
+    }
+
+    // Function to update remove button states
+    function updateRemoveButtons() {
+        const cropSections = document.querySelectorAll('.crop-section');
+        const removeButtons = document.querySelectorAll('.remove-crop-btn');
+        
+        if (cropSections.length === 1) {
+            removeButtons[0].disabled = true;
+            removeButtons[0].classList.add('opacity-50', 'cursor-not-allowed');
+            removeButtons[0].classList.remove('hover:bg-red-600');
+        } else {
+            removeButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.add('hover:bg-red-600');
+            });
+        }
+        
+        cropSections.forEach((section, index) => {
+            const title = section.querySelector('h3');
+            if (title) title.textContent = `Crop #${index + 1}`;
+        });
+    }
+
+    // Email validation function
+    function validateGmail(email) {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+        return emailRegex.test(email);
+    }
+
+    // Process the selected file
+    function handleFile(file) {
+        const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+        if (!validTypes.includes(file.type)) {
+            showUploadError('Please select a JPG, PNG, or WebP image.');
+            return;
+        }
+        
+        if (file.size > 5 * 1024 * 1024) {
+            showUploadError('Image must be less than 5MB.');
+            return;
+        }
+        
+        hideUploadError();
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewImage = document.getElementById('previewImage');
+            const previewContainer = document.getElementById('previewContainer');
+            const uploadStatus = document.getElementById('uploadStatus');
+            
+            if (previewImage) previewImage.src = e.target.result;
+            if (previewContainer) previewContainer.classList.remove('hidden');
+            if (uploadStatus) {
+                uploadStatus.innerHTML = `
+                    <div class="flex items-center text-blue-600">
+                        <i class="ri-information-line mr-2"></i>
+                        <span>Photo ready for upload</span>
+                    </div>
+                `;
+                uploadStatus.classList.remove('hidden');
+            }
+        }
+        reader.onerror = function() {
+            showUploadError('Error reading the file.');
+        }
+        reader.readAsDataURL(file);
+        
+        currentFile = file;
+    }
+
+    function showUploadError(message) {
+        const uploadError = document.getElementById('uploadError');
+        if (uploadError) {
+            uploadError.textContent = message;
+            uploadError.classList.remove('hidden');
+        }
+    }
+
+    function hideUploadError() {
+        const uploadError = document.getElementById('uploadError');
+        if (uploadError) uploadError.classList.add('hidden');
+    }
+
+    function showAlert(type, message) {
+        const box = type === 'error' ? document.getElementById('formError') : document.getElementById('formSuccess');
+        if (box) {
+            box.textContent = message;
+            box.classList.remove('hidden');
+            setTimeout(() => box.classList.add('hidden'), 4000);
+        }
+    }
+
+    // Initialize the application
+    function initApp() {
+        console.log("Initializing AgriTrack application...");
+        
+        const addCropBtn = document.getElementById('addCropBtn');
+        const form = document.getElementById('farmDataForm');
+        const successModal = document.getElementById('successModal');
+        const closeModal = document.getElementById('closeModal');
+        const emailInput = document.getElementById('email');
+        const emailWarning = document.getElementById('emailWarning');
+        
+        // Photo upload elements
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryInput = document.getElementById('galleryInput');
+        const removeImageBtn = document.getElementById('removeImage');
+        
+        // Add crop button event listener
+        if (addCropBtn) {
+            addCropBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                addCropSection();
+            });
+        }
+        
+        // Email validation
+        if (emailInput) {
+            emailInput.addEventListener('blur', function() {
+                if (this.value && !validateGmail(this.value)) {
+                    if (emailWarning) emailWarning.style.display = 'block';
+                } else {
+                    if (emailWarning) emailWarning.style.display = 'none';
+                }
+            });
+        }
+        
+        // File inputs
+        function setupFileInput(fileInput) {
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        handleFile(this.files[0]);
+                        currentFile = this.files[0];
+                    }
+                });
+            }
+        }
+        
+        setupFileInput(cameraInput);
+        setupFileInput(galleryInput);
+
+        // Remove image
+        if (removeImageBtn) {
+            removeImageBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (cameraInput) cameraInput.value = '';
+                if (galleryInput) galleryInput.value = '';
+                currentFile = null;
+                
+                const previewContainer = document.getElementById('previewContainer');
+                const uploadStatus = document.getElementById('uploadStatus');
+                
+                if (previewContainer) previewContainer.classList.add('hidden');
+                if (uploadStatus) uploadStatus.classList.add('hidden');
+                hideUploadError();
+            });
+        }
+        
+        // Form submission handler
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const submitButton = document.getElementById('submitButton');
+                if (submitButton) {
+                    const originalText = submitButton.textContent;
+                    submitButton.innerHTML = '<div class="loading-spinner"></div> Submitting...';
+                    submitButton.disabled = true;
+                    
+                    try {
+                        updateProgress(10, 'Validating form data...');
+                        
+                        if (!validateRequiredFields()) {
+                            throw new Error('Please fill out all required fields');
+                        }
+                        
+                        updateProgress(20, 'Collecting form data...');
+                        const formData = collectFormData();
+                        
+                        updateProgress(30, 'Uploading ID photo...');
+                        let idPhotoPath = null;
+                        if (currentFile) {
+                            idPhotoPath = await uploadIDPhoto(currentFile);
+                        }
+                        
+                        updateProgress(60, 'Saving to database...');
+                        const result = await submitToSupabase(formData, idPhotoPath);
+                        
+                        updateProgress(100, 'Submission complete!');
+                        
+                        if (successModal) {
+                            successModal.classList.remove('hidden');
+                            const successMessage = successModal.querySelector('p');
+                            if (successMessage) {
+                                successMessage.textContent = 'Your farm data has been submitted successfully! It is now pending admin approval.';
+                            }
+                        }
+                        
+                        console.log('🎉 Form submitted successfully!');
+                        
+                    } catch (error) {
+                        console.error('❌ Submission error:', error);
+                        showAlert('error', error.message || 'Submission failed. Please try again.');
+                    } finally {
+                        submitButton.innerHTML = originalText;
+                        submitButton.disabled = false;
+                        setTimeout(hideProgress, 2000);
+                    }
+                }
+            });
+        }
+        
+        // Close modal
+        if (closeModal) {
+            closeModal.addEventListener('click', function() {
+                if (successModal) successModal.classList.add('hidden');
+                if (form) form.reset();
+                
+                if (cameraInput) cameraInput.value = '';
+                if (galleryInput) galleryInput.value = '';
+                currentFile = null;
+                
+                const previewContainer = document.getElementById('previewContainer');
+                const uploadStatus = document.getElementById('uploadStatus');
+                
+                if (previewContainer) previewContainer.classList.add('hidden');
+                if (uploadStatus) uploadStatus.classList.add('hidden');
+                
+                const cropSections = document.getElementById('cropSections');
+                if (cropSections && cropSections.children.length > 0) {
+                    const firstCrop = cropSections.children[0];
+                    cropSections.innerHTML = '';
+                    cropSections.appendChild(firstCrop);
+                    cropCounter = 1;
+                    updateRemoveButtons();
+                }
+                
+                hideProgress();
+            });
+        }
+        
+        // Set default dates
+        const today = new Date().toISOString().split('T')[0];
+        const dateInputs = document.querySelectorAll('input[name="datePlanted[]"]');
+        if (dateInputs.length > 0) dateInputs[0].value = today;
+        
+        const harvestDate = new Date();
+        harvestDate.setDate(harvestDate.getDate() + 90);
+        const harvestInputs = document.querySelectorAll('input[name="harvestDate[]"]');
+        if (harvestInputs.length > 0) harvestInputs[0].value = harvestDate.toISOString().split('T')[0];
+        
+        updateRemoveButtons();
+        console.log("AgriTrack application initialized successfully!");
+    }
+
+    // Initialize when DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log("DOM fully loaded, initializing app...");
+        initApp();
+    });
+
+    // Fallback initialization
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
+</script>
+</body>
+</html>
