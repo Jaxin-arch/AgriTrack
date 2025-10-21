@@ -1129,10 +1129,10 @@ function updateBarangayCropData(farms) {
   // ============================================================================
 
   function calculateDemandLevel(yieldAmount) {
-    if (yieldAmount > 5000000) return 'Very High';
-    if (yieldAmount > 2500000) return 'High';
-    if (yieldAmount > 1000000) return 'Medium';
-    if (yieldAmount > 500000) return 'Low';
+    if (yieldAmount < 5000000) return 'Very High';
+    if (yieldAmount < 2500000) return 'High';
+    if (yieldAmount < 1000000) return 'Medium';
+    if (yieldAmount < 500000) return 'Low';
     return 'Very Low';
   }
 
@@ -1671,3 +1671,4 @@ if (slidePanel) {
 </script>
 </body>
 </html>
+
