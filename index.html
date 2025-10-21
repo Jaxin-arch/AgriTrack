@@ -1315,7 +1315,6 @@ body {
     }
   }
 function getCropImage(cropType) {
-    // More specific and accurate crop icons
     const cropImages = {
         // === FRUITS ===
         'Banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
@@ -1339,29 +1338,29 @@ function getCropImage(cropType) {
         'Kangkong': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
         'Spinach': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
         
-        // === VEGETABLES - FRUIT-BEARING ===
-        'Tomato': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Eggplant': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Bell Pepper': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Ampalaya': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Sayote': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Squash': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Okra': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        // === VEGETABLES - FRUIT-BEARING === (CHANGED)
+        'Tomato': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'Eggplant': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'Bell Pepper': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Ampalaya': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'Sayote': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'Squash': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'Okra': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
         
-        // === VEGETABLES - LEGUMES ===
-        'Baguio Beans': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'String Beans': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Mung Bean': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Peanut': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        // === VEGETABLES - LEGUMES === (CHANGED)
+        'Baguio Beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'String Beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'Mung Bean': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'Peanut': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
         
-        // === VEGETABLES - ROOT CROPS ===
-        'Carrots': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Radish': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Sweet Potato': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Cassava': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Ginger': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Garlic': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Onion': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        // === VEGETABLES - ROOT CROPS === (CHANGED)
+        'Carrots': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Radish': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Sweet Potato': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Cassava': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Ginger': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Garlic': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'Onion': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
         
         // === CASH CROPS ===
         'Coffee': 'https://cdn-icons-png.flaticon.com/512/3082/3082675.png',
@@ -1373,7 +1372,7 @@ function getCropImage(cropType) {
         'Sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
     };
     
-     
+    return cropImages[cropType] || 'https://cdn-icons-png.flaticon.com/512/6866/6866583.png';
 }
   function formatNumber(num) {
     // Formula: Format large numbers with commas
@@ -1849,5 +1848,6 @@ function getCropImage(cropType) {
 </script>
 </body>
 </html>
+
 
 
