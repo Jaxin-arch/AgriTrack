@@ -499,11 +499,7 @@
     </div>
 
     <script>
-    // Initialize Supabase Client (CRITICAL - WAS MISSING)
-    
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
-    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-    window.supabaseClient = supabaseClient;
+
 
     // SINGLE testConnection function - no duplicates!
     async function testConnection() {
@@ -545,7 +541,7 @@
         });
     }
 
-    // File upload function
+    // UPDATED: File upload function with RLS fix
     async function uploadIDPhoto(file) {
         try {
             console.log('📤 Uploading file...');
@@ -553,19 +549,57 @@
             const fileExt = file.name.split('.').pop();
             const fileName = `submissions/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
             
+            // Try to upload to storage
             const { data, error } = await window.supabaseClient.storage
-                .from('id-photos')
+                .from('verification-photos')
                 .upload(fileName, file);
             
-            if (error) throw new Error(`Upload failed: ${error.message}`);
+            if (error) {
+                console.warn('⚠️ Storage upload failed, using base64 fallback:', error.message);
+                
+                // FALLBACK: Convert to base64 and return as data URL
+                const base64Data = await fileToBase64(file);
+                return {
+                    success: true,
+                    base64Data: base64Data,
+                    fileName: fileName,
+                    storageFailed: true
+                };
+            }
             
-            console.log('✅ File uploaded:', fileName);
-            return fileName;
+            console.log('✅ File uploaded successfully:', fileName);
+            return {
+                success: true,
+                fileName: fileName,
+                storageFailed: false
+            };
             
         } catch (error) {
             console.error('❌ Upload failed:', error);
-            throw error;
+            
+            // FALLBACK: Convert to base64 on error
+            try {
+                const base64Data = await fileToBase64(file);
+                return {
+                    success: true,
+                    base64Data: base64Data,
+                    fileName: file.name,
+                    storageFailed: true
+                };
+            } catch (fallbackError) {
+                throw new Error('Upload failed and fallback also failed: ' + error.message);
+            }
         }
+    }
+
+    // Helper function to convert file to base64
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+        });
     }
 
     // Collect all form data
@@ -608,8 +642,8 @@
         return formData;
     }
 
-    // CORRECTED SUBMISSION FUNCTION - FIXED BARANGAY ISSUE
-    async function submitToSupabase(formData, idPhotoPath) {
+    // CORRECTED SUBMISSION FUNCTION - UPDATED FOR BASE64 FALLBACK
+    async function submitToSupabase(formData, idPhotoResult) {
         try {
             console.log('🚀 Starting database submission...');
             
@@ -700,19 +734,37 @@
                 }
             }
             
-            // 5. Insert verification
-            if (idPhotoPath) {
+            // 5. Insert verification - UPDATED FOR BASE64 FALLBACK
+            if (idPhotoResult && idPhotoResult.success) {
                 console.log('📸 Inserting verification...');
+                
+                const verificationData = {
+                    farmer_id: farmer.id,
+                    verification_status: 'pending'
+                };
+                
+                // Add photo data based on upload method
+                if (idPhotoResult.storageFailed && idPhotoResult.base64Data) {
+                    // Store base64 data directly in database
+                    verificationData.id_photo_base64 = idPhotoResult.base64Data;
+                    verificationData.id_photo_path = null;
+                    console.log('📸 Using base64 photo storage');
+                } else {
+                    // Store file path from storage
+                    verificationData.id_photo_path = idPhotoResult.fileName;
+                    verificationData.id_photo_base64 = null;
+                    console.log('📸 Using storage photo path');
+                }
+                
                 const { error: verificationError } = await window.supabaseClient
                     .from('identity_verifications')
-                    .insert([{
-                        farmer_id: farmer.id,
-                        id_photo_path: idPhotoPath,
-                        verification_status: 'pending'
-                    }]);
+                    .insert([verificationData]);
                 
-                if (verificationError) console.warn('⚠️ Verification failed:', verificationError);
-                else console.log('✅ Verification inserted');
+                if (verificationError) {
+                    console.warn('⚠️ Verification insertion failed:', verificationError);
+                } else {
+                    console.log('✅ Verification inserted successfully');
+                }
             }
             
             console.log('🎉 All operations completed!');
@@ -1098,7 +1150,7 @@
             });
         }
         
-        // Form submission handler
+        // UPDATED Form submission handler with base64 fallback
         if (form) {
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -1119,14 +1171,17 @@
                         updateProgress(20, 'Collecting form data...');
                         const formData = collectFormData();
                         
-                        updateProgress(30, 'Uploading ID photo...');
-                        let idPhotoPath = null;
+                        updateProgress(30, 'Processing ID photo...');
+                        let idPhotoResult = null;
                         if (currentFile) {
-                            idPhotoPath = await uploadIDPhoto(currentFile);
+                            idPhotoResult = await uploadIDPhoto(currentFile);
+                            if (idPhotoResult.storageFailed) {
+                                console.log('ℹ️ Using base64 fallback for photo storage');
+                            }
                         }
                         
                         updateProgress(60, 'Saving to database...');
-                        const result = await submitToSupabase(formData, idPhotoPath);
+                        const result = await submitToSupabase(formData, idPhotoResult);
                         
                         updateProgress(100, 'Submission complete!');
                         
