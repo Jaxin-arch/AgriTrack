@@ -1317,59 +1317,59 @@ body {
 function getCropImage(cropType) {
     const cropImages = {
         // === FRUITS ===
-        'Banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
-        'Cavendish Banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
-        'Durian': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
-        'Coconut': 'https://cdn-icons-png.flaticon.com/512/3944/3944201.png',
-        'Mango': 'https://cdn-icons-png.flaticon.com/512/2909/2909797.png',
-        'Pineapple': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
-        'Papaya': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
-        'Watermelon': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
-        'Jackfruit': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
+        'banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
+        'cavendish banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
+        'durian': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
+        'coconut': 'https://cdn-icons-png.flaticon.com/512/3944/3944201.png',
+        'mango': 'https://cdn-icons-png.flaticon.com/512/2909/2909797.png',
+        'pineapple': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'papaya': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'watermelon': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'jackfruit': 'https://cdn-icons-png.flaticon.com/512/4159/4159898.png',
         
         // === GRAINS & CEREALS ===
-        'Rice': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
-        'Corn': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'rice': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'corn': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
         
         // === VEGETABLES - LEAFY ===
-        'Cabbage': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Lettuce': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Petchay': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Kangkong': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-        'Spinach': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'cabbage': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'lettuce': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'petchay': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'kangkong': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+        'spinach': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
         
         // === VEGETABLES - FRUIT-BEARING === (CHANGED)
-        'Tomato': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
-        'Eggplant': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
-        'Bell Pepper': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Ampalaya': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
-        'Sayote': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
-        'Squash': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
-        'Okra': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'tomato': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'eggplant': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'bell pepper': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'ampalaya': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'sayote': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'squash': 'https://cdn-icons-png.flaticon.com/512/6166/6166890.png',
+        'okra': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
         
         // === VEGETABLES - LEGUMES === (CHANGED)
-        'Baguio Beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
-        'String Beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
-        'Mung Bean': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
-        'Peanut': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'baguio beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'string beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'mung bean': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
+        'peanut': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
         
         // === VEGETABLES - ROOT CROPS === (CHANGED)
-        'Carrots': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Radish': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Sweet Potato': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Cassava': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Ginger': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Garlic': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
-        'Onion': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'carrots': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'radish': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'sweet potato': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'cassava': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'ginger': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'garlic': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
+        'onion': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
         
         // === CASH CROPS ===
-        'Coffee': 'https://cdn-icons-png.flaticon.com/512/3082/3082675.png',
-        'Cacao': 'https://cdn-icons-png.flaticon.com/512/6176/6176920.png',
-        'Abaca': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
-        'Rubber': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'coffee': 'https://cdn-icons-png.flaticon.com/512/3082/3082675.png',
+        'cacao': 'https://cdn-icons-png.flaticon.com/512/6176/6176920.png',
+        'abaca': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
+        'rubber': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png',
         
         // === OTHERS ===
-        'Sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
+        'sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
     };
     
     return cropImages[cropType] || 'https://cdn-icons-png.flaticon.com/512/6866/6866583.png';
@@ -1848,6 +1848,7 @@ function getCropImage(cropType) {
 </script>
 </body>
 </html>
+
 
 
 
