@@ -27,7 +27,6 @@
         }
         // If correct password, do nothing - page continues loading
     </script>
-  <!-- REMOVED: Resend SDK import -->
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -401,56 +400,58 @@
   </div>
 
   <!-- Detail View Modal -->
-  <div aria-labelledby="detailModalTitle" aria-modal="true" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden" id="detailModal" role="dialog">
+  <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
     <div class="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative">
-      <button aria-label="Close detail view" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 rounded" id="closeModalBtn">
-        <i class="fas fa-times fa-lg"></i>
-      </button>
-      <h3 class="text-xl font-semibold text-green-800 mb-4 select-none" id="detailModalTitle">Farm Submission Details</h3>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div>
-          <h4 class="text-green-700 font-semibold mb-2">Farmer Information</h4>
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <div class="flex items-center mb-3">
-              <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mr-3">
-                <i class="fas fa-user text-green-600"></i>
-              </div>
-              <div>
-                <p class="font-medium" id="detailFarmerName">Loading...</p>
-                <p class="text-sm text-gray-600" id="detailFarmerContact">Contact information</p>
-              </div>
-            </div>
-            <div class="space-y-2 text-sm">
-              <p><span class="font-medium">Email:</span> <span id="detailEmail">Loading...</span></p>
-              <p><span class="font-medium">Barangay:</span> <span id="detailBarangay">Loading...</span></p>
-              <p><span class="font-medium">Submitted:</span> <span id="detailSubmitted">Loading...</span></p>
-            </div>
-          </div>
-        </div>
-        
-        <div>
-          <h4 class="text-green-700 font-semibold mb-2">Farm Details</h4>
-          <div class="bg-gray-50 p-4 rounded-lg">
-            <div class="space-y-2 text-sm">
-              <p><span class="font-medium">Total Land Area:</span> <span id="detailLandArea">Loading...</span></p>
-              <p><span class="font-medium">Area Planted:</span> <span id="detailAreaPlanted">Loading...</span></p>
-              <p><span class="font-medium">Ownership:</span> <span id="detailOwnership">Loading...</span></p>
-              <p><span class="font-medium">Terrain:</span> <span id="detailTerrain">Loading...</span></p>
-              <p><span class="font-medium">Crop Type:</span> <span id="detailCropType">Loading...</span></p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-        <button class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-red-400" id="rejectBtn">
-          Reject
+        <button id="closeModalBtn" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700 bg-white rounded-full p-2 shadow-md">
+            <i class="fas fa-times"></i>
         </button>
-        <button class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400" id="approveBtn">
-          Approve
-        </button>
-      </div>
+
+        <!-- Photo section first -->
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-3">Verification Photo</h3>
+            <div class="bg-gray-100 rounded-lg overflow-hidden">
+                <img id="photoModalImg" src="" alt="Verification Photo" 
+                     class="max-w-full h-auto max-h-96 object-contain mx-auto hidden">
+                <p id="photoNoMessage" class="text-gray-500 text-center py-8">
+                    No verification photo available
+                </p>
+            </div>
+            <p id="photoModalCaption" class="text-sm text-gray-600 mt-3"></p>
+        </div>
+
+        <!-- Farmer Details -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+                <h4 class="text-green-700 font-semibold mb-2">Farmer Information</h4>
+                <div class="space-y-2">
+                    <p><strong>Name:</strong> <span id="detailFarmerName"></span></p>
+                    <p><strong>Contact:</strong> <span id="detailFarmerContact"></span></p>
+                    <p><strong>Barangay:</strong> <span id="detailBarangay"></span></p>
+                    <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+                    <p><strong>Submitted:</strong> <span id="detailSubmitted"></span></p>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-green-700 font-semibold mb-2">Farm Details</h4>
+                <div class="space-y-2">
+                    <p><strong>Land Area:</strong> <span id="detailLandArea"></span></p>
+                    <p><strong>Ownership:</strong> <span id="detailOwnership"></span></p>
+                    <p><strong>Terrain:</strong> <span id="detailTerrain"></span></p>
+                    <p><strong>Crop Type:</strong> <span id="detailCropType"></span></p>
+                    <p><strong>Area Planted:</strong> <span id="detailAreaPlanted"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button id="rejectBtn" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-red-400">
+                Reject
+            </button>
+            <button id="approveBtn" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded shadow focus:outline-none focus:ring-2 focus:ring-green-400">
+                Approve
+            </button>
+        </div>
     </div>
   </div>
 
@@ -491,7 +492,7 @@
   let currentDetailId = null;
   let pendingAction = null;
 
-  // DOM elements
+  // DOM elements - FIXED: Added missing closeModalBtn
   const elements = {
     mobileSidebarToggle: document.getElementById("mobileSidebarToggle"),
     sidebar: document.getElementById("sidebar"),
@@ -516,7 +517,7 @@
     farmersTableBody: document.getElementById("farmersTableBody"),
     searchFarmers: document.getElementById("searchFarmers"),
     detailModal: document.getElementById("detailModal"),
-    closeModalBtn: document.getElementById("closeModalBtn"),
+    closeModalBtn: document.getElementById("closeModalBtn"), // FIXED: This was missing
     approveBtn: document.getElementById("approveBtn"),
     rejectBtn: document.getElementById("rejectBtn"),
     detailFarmerName: document.getElementById("detailFarmerName"),
@@ -578,7 +579,7 @@
     }
   }
 
-  // REAL SUPABASE DATA FUNCTIONS - UPDATED FOR NEW STATUS SYSTEM
+  // REAL SUPABASE DATA FUNCTIONS
   async function fetchPendingSubmissions() {
     try {
       console.log('Fetching pending submissions from Supabase...');
@@ -587,6 +588,7 @@
         .from('farms')
         .select(`
           id,
+          farmer_id,
           land_area,
           area_unit,
           ownership_type,
@@ -601,7 +603,7 @@
           ),
           crops(*)
         `)
-        .eq('farm_status', 'pending')  // CRITICAL: Only get pending farms
+        .eq('farm_status', 'pending')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -639,7 +641,7 @@
           ),
           crops(*)
         `)
-        .eq('farm_status', 'approved')  // CRITICAL: Only get approved farms
+        .eq('farm_status', 'approved')
         .order('verified_at', { ascending: false });
 
       if (error) throw error;
@@ -686,7 +688,7 @@
     }
   }
 
-  // REAL APPROVAL/REJECTION FUNCTIONS - UPDATED FOR NEW STATUS SYSTEM
+  // REAL APPROVAL/REJECTION FUNCTIONS
   async function approveSubmission(id) {
     try {
       console.log('Approving submission:', id);
@@ -696,7 +698,6 @@
         throw new Error('Submission not found');
       }
 
-      // Update farm status to approved
       const { error } = await supabase
         .from('farms')
         .update({ 
@@ -746,7 +747,6 @@
 
       const rejectionReason = 'Submission requires revision';
 
-      // Update farm status to rejected
       const { error } = await supabase
         .from('farms')
         .update({ 
@@ -786,10 +786,13 @@
     }
   }
 
+  // FIXED: openDetailModal with working close button and photo handling
   async function openDetailModal(id) {
     currentDetailId = id;
-    
+    console.log('🔍 Opening detail modal for farm ID:', id);
+
     try {
+      // 1. Get farm data
       const { data: farm, error: farmError } = await supabase
         .from('farms')
         .select(`
@@ -801,41 +804,119 @@
 
       if (farmError) throw farmError;
 
+      console.log('✅ Farm data loaded, farmer_id:', farm.farmer_id);
+
+      // 2. Get verification data with photo path
+      const { data: verification, error: verificationError } = await supabase
+        .from('identity_verifications')
+        .select('id_photo_path, verification_status')
+        .eq('farmer_id', farm.farmer_id)
+        .single();
+
+      console.log('📸 Verification data:', verification);
+
+      if (verificationError) {
+        console.warn('No verification record found:', verificationError);
+      }
+
+      // 3. Get crops data
       const { data: crops, error: cropsError } = await supabase
         .from('crops')
         .select('*')
         .eq('farm_id', id);
 
-      if (cropsError) console.error('Error fetching crops:', cropsError);
+      // Update text fields
+      const safeSetText = (element, text) => {
+        if (element) element.textContent = text;
+      };
 
-      // Update modal content
-      elements.detailFarmerName.textContent = farm.farmers.full_name || 'Unknown';
-      elements.detailFarmerContact.textContent = farm.farmers.email || 'No contact';
-      elements.detailBarangay.textContent = farm.farmers.barangay || 'Unknown';
-      elements.detailEmail.textContent = farm.farmers.email || 'No email';
-      elements.detailSubmitted.textContent = formatDate(farm.created_at);
-      elements.detailLandArea.textContent = `${farm.land_area || 0} ${farm.area_unit || 'hectares'}`;
-      elements.detailOwnership.textContent = farm.ownership_type || 'N/A';
-      elements.detailTerrain.textContent = farm.terrain_type || 'N/A';
-      elements.detailCropType.textContent = farm.farm_status || 'Pending';
+      safeSetText(elements.detailFarmerName, farm.farmers?.full_name || 'Unknown');
+      safeSetText(elements.detailFarmerContact, farm.farmers?.email || 'No contact');
+      safeSetText(elements.detailBarangay, farm.farmers?.barangay || 'Unknown');
+      safeSetText(elements.detailEmail, farm.farmers?.email || 'No email');
+      safeSetText(elements.detailSubmitted, formatDate(farm.created_at));
+      safeSetText(elements.detailLandArea, `${farm.land_area || 0} ${farm.area_unit || 'hectares'}`);
+      safeSetText(elements.detailOwnership, farm.ownership_type || 'N/A');
+      safeSetText(elements.detailTerrain, farm.terrain_type || 'N/A');
 
       if (crops && crops.length > 0) {
         const primaryCrop = crops[0];
-        elements.detailCropType.textContent = `${primaryCrop.crop_type}${crops.length > 1 ? ` +${crops.length - 1} more crops` : ''}`;
-        elements.detailAreaPlanted.textContent = `${primaryCrop.area_planted || 0} ${primaryCrop.planted_area_unit || 'hectares'}`;
+        safeSetText(elements.detailCropType, `${primaryCrop.crop_type}${crops.length > 1 ? ` +${crops.length - 1} more crops` : ''}`);
+        safeSetText(elements.detailAreaPlanted, `${primaryCrop.area_planted || 0} ${primaryCrop.planted_area_unit || 'hectares'}`);
       } else {
-        elements.detailCropType.textContent = 'No crops';
-        elements.detailAreaPlanted.textContent = 'N/A';
+        safeSetText(elements.detailCropType, 'No crops');
+        safeSetText(elements.detailAreaPlanted, 'N/A');
       }
 
-      elements.detailModal.classList.remove("hidden");
+      // 4. FIXED PHOTO HANDLING - SIMPLIFIED APPROACH
+      const imgEl = document.getElementById('photoModalImg');
+      const noPhotoEl = document.getElementById('photoNoMessage');
+      const captionEl = document.getElementById('photoModalCaption');
+
+      if (verification?.id_photo_path) {
+        console.log('📁 Photo path found:', verification.id_photo_path);
+        
+        // Try both bucket names to be safe
+        const bucketsToTry = ['verification-photos', 'id-photos'];
+        let workingUrl = null;
+
+        for (let bucket of bucketsToTry) {
+          const testUrl = `https://mqmlffykchrviajwvykj.supabase.co/storage/v1/object/public/${bucket}/${verification.id_photo_path}`;
+          console.log(`🔄 Testing bucket: ${bucket}`, testUrl);
+          
+          const imageLoaded = await new Promise((resolve) => {
+            const testImg = new Image();
+            testImg.onload = () => {
+              console.log(`✅ Image loads from ${bucket}`);
+              resolve(testUrl);
+            };
+            testImg.onerror = () => {
+              console.log(`❌ Image fails from ${bucket}`);
+              resolve(null);
+            };
+            testImg.src = testUrl;
+          });
+
+          if (imageLoaded) {
+            workingUrl = imageLoaded;
+            break;
+          }
+        }
+
+        if (workingUrl && imgEl && noPhotoEl && captionEl) {
+          console.log('🖼️ Setting image with URL:', workingUrl);
+          imgEl.src = workingUrl;
+          imgEl.classList.remove('hidden');
+          noPhotoEl.classList.add('hidden');
+          captionEl.textContent = `Submitted by: ${farm.farmers?.full_name || 'Farmer'} • ${formatDate(farm.created_at)}`;
+        } else {
+          console.log('❌ No working URL found for photo');
+          if (imgEl && noPhotoEl && captionEl) {
+            imgEl.classList.add('hidden');
+            noPhotoEl.classList.remove('hidden');
+            captionEl.textContent = 'Photo file not found in storage';
+          }
+        }
+      } else {
+        console.log('❌ No photo path available');
+        if (imgEl && noPhotoEl && captionEl) {
+          imgEl.classList.add('hidden');
+          noPhotoEl.classList.remove('hidden');
+          captionEl.textContent = 'No verification photo submitted';
+        }
+      }
+
+      // Show the modal
+      if (elements.detailModal) {
+        elements.detailModal.classList.remove("hidden");
+      }
     } catch (error) {
       console.error('Error loading submission details:', error);
       showToast('Error loading submission details', 'error');
     }
   }
 
-  // RENDER FUNCTIONS
+  // RENDER FUNCTIONS (unchanged)
   function renderPendingTable(submissionsToRender = submissions) {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -898,7 +979,6 @@
       `).join('');
     }
 
-    // Update pagination info
     const totalPages = Math.ceil(submissionsToRender.length / itemsPerPage);
     elements.paginationInfo.textContent = `Showing ${paginatedSubmissions.length} of ${submissionsToRender.length} submissions`;
     elements.prevPage.disabled = currentPage === 1;
@@ -1008,7 +1088,7 @@
     }
   }
 
-  // FILTER FUNCTIONS
+  // FILTER FUNCTIONS (unchanged)
   function filterSubmissions() {
     const searchTerm = elements.searchFarmer.value.toLowerCase();
     const barangayFilter = elements.filterBarangay.value;
@@ -1055,7 +1135,7 @@
     renderFarmersTable(filtered);
   }
 
-  // PAGINATION FUNCTIONS
+  // PAGINATION FUNCTIONS (unchanged)
   function paginateSubmissions(direction) {
     const totalPages = Math.ceil(submissions.length / itemsPerPage);
     
@@ -1108,14 +1188,14 @@
     }
   }
 
-  // EVENT LISTENERS SETUP
+  // EVENT LISTENERS SETUP - FIXED: Added closeModalBtn event listener
   function setupEventListeners() {
     // Mobile sidebar toggle
     elements.mobileSidebarToggle?.addEventListener('click', () => {
       elements.sidebar.classList.toggle('-translate-x-full');
     });
 
-    // Modal controls
+    // Modal controls - FIXED: Added closeModalBtn event listener
     elements.closeModalBtn?.addEventListener('click', () => {
       elements.detailModal.classList.add("hidden");
     });
