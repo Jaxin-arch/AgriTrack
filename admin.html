@@ -673,68 +673,175 @@
   }
 
   async function fetchFarmers() {
-    try {
-      const { data, error } = await supabase
-        .from('farmers')
-        .select('*')
-        .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('farmers')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      console.error('Error fetching farmers:', error);
-      showToast('Error loading farmers', 'error');
-      return [];
-    }
+    if (error) throw error;
+    
+    // ✅ UPDATE: Remove duplicate farmers based on email
+    const uniqueFarmers = removeDuplicateFarmers(data);
+    
+    return uniqueFarmers;
+  } catch (error) {
+    console.error('Error fetching farmers:', error);
+    showToast('Error loading farmers', 'error');
+    return [];
   }
+}
 
+// Function to remove duplicate farmers
+// Enhanced function to remove duplicate farmers
+function removeDuplicateFarmers(farmers) {
+  if (!farmers || !Array.isArray(farmers)) return [];
+  
+  const seen = new Map();
+  const uniqueFarmers = [];
+  let duplicatesRemoved = 0;
+  
+  // Sort by creation date to keep the most recent entry
+  const sortedFarmers = [...farmers].sort((a, b) => 
+    new Date(b.created_at) - new Date(a.created_at)
+  );
+  
+  sortedFarmers.forEach(farmer => {
+    if (!farmer.email) {
+      console.warn('Farmer without email found:', farmer);
+      return;
+    }
+    
+    const emailKey = farmer.email.toLowerCase().trim();
+    const nameBarangayKey = `${farmer.full_name?.toLowerCase().trim()}_${farmer.barangay?.toLowerCase().trim()}`;
+    
+    // Check if we've seen this email OR name+barangay combination
+    const isDuplicate = seen.has(emailKey) || seen.has(nameBarangayKey);
+    
+    if (!isDuplicate) {
+      seen.set(emailKey, true);
+      seen.set(nameBarangayKey, true);
+      uniqueFarmers.push(farmer);
+    } else {
+      duplicatesRemoved++;
+      console.log(`🗑️ Duplicate farmer removed: ${farmer.full_name} (${farmer.email}) - ${farmer.barangay}`);
+    }
+  });
+  
+  console.log(`📊 Farmer Deduplication: Removed ${duplicatesRemoved} duplicates, kept ${uniqueFarmers.length} unique farmers`);
+  return uniqueFarmers;
+}
+
+// Function to remove duplicate farmers
+function removeDuplicateFarmers(farmers) {
+  if (!farmers || !Array.isArray(farmers)) return [];
+  
+  const seen = new Map();
+  const uniqueFarmers = [];
+  
+  farmers.forEach(farmer => {
+    // Use email as the primary unique identifier
+    const key = farmer.email?.toLowerCase().trim();
+    
+    if (!key) {
+      console.warn('Farmer without email found:', farmer);
+      return; // Skip farmers without email
+    }
+    
+    if (!seen.has(key)) {
+      seen.set(key, true);
+      uniqueFarmers.push(farmer);
+    } else {
+      console.log(`Duplicate farmer found and removed: ${farmer.full_name} (${farmer.email})`);
+    }
+  });
+  
+  console.log(`Removed ${farmers.length - uniqueFarmers.length} duplicate farmers`);
+  return uniqueFarmers;
+}
+// Check for duplicate approvals
+async function checkForDuplicateApproval(farmerEmail, cropType) {
+  try {
+    const { data, error } = await supabase
+      .from('farms')
+      .select(`
+        id,
+        farmers!farmer_id (email),
+        crops(crop_type)
+      `)
+      .eq('farm_status', 'approved')
+      .eq('farmers.email', farmerEmail);
+
+    if (error) throw error;
+    
+    // Check if farmer already has approved farm with same crop type
+    return data.some(farm => 
+      farm.crops?.some(crop => crop.crop_type === cropType)
+    );
+  } catch (error) {
+    console.error('Error checking for duplicates:', error);
+    return false;
+  }
+}
   // REAL APPROVAL/REJECTION FUNCTIONS
   async function approveSubmission(id) {
-    try {
-      console.log('Approving submission:', id);
-      
-      const submission = submissions.find(sub => sub.id === id);
-      if (!submission) {
-        throw new Error('Submission not found');
+  try {
+    console.log('Approving submission:', id);
+    
+    const submission = submissions.find(sub => sub.id === id);
+    if (!submission) {
+      throw new Error('Submission not found');
+    }
+
+    // ✅ ADD THIS DUPLICATE CHECK (NEW CODE)
+    // Check for duplicate approved submissions from same farmer
+    const cropType = submission.crops?.[0]?.crop_type;
+    if (cropType) {
+      const existingApproved = await checkForDuplicateApproval(submission.farmers.email, cropType);
+      if (existingApproved) {
+        showToast(`⚠️ Warning: ${submission.farmers.full_name} already has an approved ${cropType} farm`, 'warning');
+        // Continue with approval anyway, but show warning
       }
+    }
 
-      const { error } = await supabase
-        .from('farms')
-        .update({ 
-          farm_status: 'approved',
-          verified_at: new Date().toISOString()
-        })
-        .eq('id', id);
+    // REST OF THE EXISTING CODE REMAINS THE SAME...
+    const { error } = await supabase
+      .from('farms')
+      .update({ 
+        farm_status: 'approved',
+        verified_at: new Date().toISOString()
+      })
+      .eq('id', id);
 
-      if (error) throw error;
+    if (error) throw error;
+    
+    // Send approval notification
+    try {
+      const emailSent = await sendEmailNotification(
+        submission.farmers.email,
+        '✅ Your Farm Data Was Approved! - AgriTrack',
+        `Hello ${submission.farmers.full_name}, your farm submission has been approved!`
+      );
       
-      // Send approval notification
-      try {
-        const emailSent = await sendEmailNotification(
-          submission.farmers.email,
-          '✅ Your Farm Data Was Approved! - AgriTrack',
-          `Hello ${submission.farmers.full_name}, your farm submission has been approved!`
-        );
-        
-        if (emailSent) {
-          showToast('Submission approved and notification sent!', 'success');
-        } else {
-          showToast('Submission approved but notification failed to send', 'warning');
-        }
-      } catch (emailError) {
-        console.error('Email error:', emailError);
+      if (emailSent) {
+        showToast('Submission approved and notification sent!', 'success');
+      } else {
         showToast('Submission approved but notification failed to send', 'warning');
       }
-      
-      await refreshData();
-      elements.detailModal.classList.add("hidden");
-      elements.confirmModal.classList.add("hidden");
-      
-    } catch (error) {
-      console.error('Approval failed:', error);
-      showToast('Approval failed: ' + error.message, 'error');
+    } catch (emailError) {
+      console.error('Email error:', emailError);
+      showToast('Submission approved but notification failed to send', 'warning');
     }
+    
+    await refreshData();
+    elements.detailModal.classList.add("hidden");
+    elements.confirmModal.classList.add("hidden");
+    
+  } catch (error) {
+    console.error('Approval failed:', error);
+    showToast('Approval failed: ' + error.message, 'error');
   }
+}
 
   async function rejectSubmission(id) {
     try {
@@ -785,7 +892,49 @@
       showToast('Rejection failed: ' + error.message, 'error');
     }
   }
+// Enhanced farmer registration validation
+async function validateNewFarmer(email, fullName) {
+  try {
+    // Check if farmer with same email already exists
+    const { data, error } = await supabase
+      .from('farmers')
+      .select('id, full_name, email')
+      .eq('email', email)
+      .single();
 
+    if (data) {
+      return {
+        valid: false,
+        message: `Farmer with email ${email} already exists`,
+        existingFarmer: data
+      };
+    }
+
+    // Check if farmer with same name exists (case insensitive)
+    const { data: nameMatch, error: nameError } = await supabase
+      .from('farmers')
+      .select('id, full_name, email')
+      .ilike('full_name', fullName)
+      .single();
+
+    if (nameMatch) {
+      return {
+        valid: false,
+        message: `Farmer with name "${fullName}" already exists`,
+        existingFarmer: nameMatch
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    // No existing farmer found - this is good
+    if (error.code === 'PGRST116') {
+      return { valid: true };
+    }
+    console.error('Error validating farmer:', error);
+    return { valid: false, message: 'Error checking farmer existence' };
+  }
+}
   // FIXED: openDetailModal with working close button and photo handling
   async function openDetailModal(id) {
     currentDetailId = id;
@@ -807,17 +956,34 @@
       console.log('✅ Farm data loaded, farmer_id:', farm.farmer_id);
 
       // 2. Get verification data with photo path
-      const { data: verification, error: verificationError } = await supabase
-        .from('identity_verifications')
-        .select('id_photo_path, verification_status')
-        .eq('farmer_id', farm.farmer_id)
-        .single();
+      // 2. Get verification data with photo path - HANDLE MISSING RECORDS
+let verification = null;
+let idPhotoPath = null;
+
+try {
+  const { data: verificationData, error: verificationError } = await supabase
+    .from('identity_verifications')
+    .select('id_photo_path, verification_status')
+    .eq('farmer_id', farm.farmer_id)
+    .maybeSingle(); // Use maybeSingle() instead of single()
+
+  if (!verificationError && verificationData) {
+    verification = verificationData;
+    idPhotoPath = verificationData.id_photo_path;
+    console.log('📸 Verification data found:', verification);
+  } else {
+    console.log('ℹ️ No verification record found for farmer:', farm.farmer_id);
+    // Check if there's a photo path in the farm record as fallback
+    if (farm.verification_photo_path) {
+      idPhotoPath = farm.verification_photo_path;
+      console.log('📁 Using fallback photo path from farm record:', idPhotoPath);
+    }
+  }
+} catch (error) {
+  console.log('⚠️ Error fetching verification data:', error);
+}
 
       console.log('📸 Verification data:', verification);
-
-      if (verificationError) {
-        console.warn('No verification record found:', verificationError);
-      }
 
       // 3. Get crops data
       const { data: crops, error: cropsError } = await supabase
@@ -849,63 +1015,67 @@
       }
 
       // 4. FIXED PHOTO HANDLING - SIMPLIFIED APPROACH
-      const imgEl = document.getElementById('photoModalImg');
-      const noPhotoEl = document.getElementById('photoNoMessage');
-      const captionEl = document.getElementById('photoModalCaption');
+     // 4. PHOTO HANDLING - WITH FALLBACKS
+const imgEl = document.getElementById('photoModalImg');
+const noPhotoEl = document.getElementById('photoNoMessage');
+const captionEl = document.getElementById('photoModalCaption');
 
-      if (verification?.id_photo_path) {
-        console.log('📁 Photo path found:', verification.id_photo_path);
-        
-        // Try both bucket names to be safe
-        const bucketsToTry = ['verification-photos', 'id-photos'];
-        let workingUrl = null;
+// Use the photo path we found (either from verification or farm record)
+const photoPathToUse = idPhotoPath || verification?.id_photo_path;
 
-        for (let bucket of bucketsToTry) {
-          const testUrl = `https://mqmlffykchrviajwvykj.supabase.co/storage/v1/object/public/${bucket}/${verification.id_photo_path}`;
-          console.log(`🔄 Testing bucket: ${bucket}`, testUrl);
-          
-          const imageLoaded = await new Promise((resolve) => {
-            const testImg = new Image();
-            testImg.onload = () => {
-              console.log(`✅ Image loads from ${bucket}`);
-              resolve(testUrl);
-            };
-            testImg.onerror = () => {
-              console.log(`❌ Image fails from ${bucket}`);
-              resolve(null);
-            };
-            testImg.src = testUrl;
-          });
+if (photoPathToUse && imgEl && noPhotoEl && captionEl) {
+  console.log('📁 Photo path found:', photoPathToUse);
+  
+  // Try both bucket names to be safe
+  const bucketsToTry = ['verification-photos', 'id-photos'];
+  let workingUrl = null;
 
-          if (imageLoaded) {
-            workingUrl = imageLoaded;
-            break;
-          }
-        }
+  for (let bucket of bucketsToTry) {
+    const testUrl = `https://mqmlffykchrviajwvykj.supabase.co/storage/v1/object/public/${bucket}/${photoPathToUse}`;
+    console.log(`🔄 Testing bucket: ${bucket}`, testUrl);
+    
+    const imageLoaded = await new Promise((resolve) => {
+      const testImg = new Image();
+      testImg.onload = () => {
+        console.log(`✅ Image loads from ${bucket}`);
+        resolve(testUrl);
+      };
+      testImg.onerror = () => {
+        console.log(`❌ Image fails from ${bucket}`);
+        resolve(null);
+      };
+      testImg.src = testUrl;
+    });
 
-        if (workingUrl && imgEl && noPhotoEl && captionEl) {
-          console.log('🖼️ Setting image with URL:', workingUrl);
-          imgEl.src = workingUrl;
-          imgEl.classList.remove('hidden');
-          noPhotoEl.classList.add('hidden');
-          captionEl.textContent = `Submitted by: ${farm.farmers?.full_name || 'Farmer'} • ${formatDate(farm.created_at)}`;
-        } else {
-          console.log('❌ No working URL found for photo');
-          if (imgEl && noPhotoEl && captionEl) {
-            imgEl.classList.add('hidden');
-            noPhotoEl.classList.remove('hidden');
-            captionEl.textContent = 'Photo file not found in storage';
-          }
-        }
-      } else {
-        console.log('❌ No photo path available');
-        if (imgEl && noPhotoEl && captionEl) {
-          imgEl.classList.add('hidden');
-          noPhotoEl.classList.remove('hidden');
-          captionEl.textContent = 'No verification photo submitted';
-        }
-      }
+    if (imageLoaded) {
+      workingUrl = imageLoaded;
+      break;
+    }
+  }
 
+  if (workingUrl) {
+    console.log('🖼️ Setting image with URL:', workingUrl);
+    imgEl.src = workingUrl;
+    imgEl.classList.remove('hidden');
+    noPhotoEl.classList.add('hidden');
+    captionEl.textContent = `Submitted by: ${farm.farmers?.full_name || 'Farmer'} • ${formatDate(farm.created_at)}`;
+  } else {
+    console.log('❌ No working URL found for photo');
+    showNoPhotoMessage(imgEl, noPhotoEl, captionEl, 'Photo file not found in storage');
+  }
+} else {
+  console.log('❌ No photo path available');
+  showNoPhotoMessage(imgEl, noPhotoEl, captionEl, 'No verification photo submitted');
+}
+
+// Helper function for no photo message
+function showNoPhotoMessage(imgEl, noPhotoEl, captionEl, message) {
+  if (imgEl && noPhotoEl && captionEl) {
+    imgEl.classList.add('hidden');
+    noPhotoEl.classList.remove('hidden');
+    captionEl.textContent = message;
+  }
+}
       // Show the modal
       if (elements.detailModal) {
         elements.detailModal.classList.remove("hidden");
@@ -1042,52 +1212,120 @@
   }
 
   function renderFarmersTable(farmersToRender = farmers) {
-    if (farmersToRender.length === 0) {
-      elements.farmersTableBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="px-4 py-8 text-center text-gray-500">
-            <div class="flex flex-col items-center">
-              <i class="fas fa-users text-4xl text-gray-300 mb-2"></i>
-              <p>No registered farmers found</p>
-              <p class="text-sm">Farmer data will appear here</p>
+  // Get unique farmers to prevent duplicates in display
+  const uniqueFarmers = getTrulyUniqueFarmers(farmersToRender);
+  
+  if (uniqueFarmers.length === 0) {
+    elements.farmersTableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+          <div class="flex flex-col items-center">
+            <i class="fas fa-users text-4xl text-gray-300 mb-2"></i>
+            <p>No registered farmers found</p>
+            <p class="text-sm">Farmer data will appear here</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  } else {
+    elements.farmersTableBody.innerHTML = uniqueFarmers.map(farmer => `
+      <tr class="border-b border-gray-200 hover:bg-gray-50">
+        <td class="px-4 py-3 whitespace-nowrap">
+          <div class="flex items-center">
+            <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+              <i class="fas fa-user text-green-600"></i>
             </div>
-          </td>
-        </tr>
-      `;
-    } else {
-      elements.farmersTableBody.innerHTML = farmersToRender.map(farmer => `
-        <tr class="border-b border-gray-200 hover:bg-gray-50">
-          <td class="px-4 py-3 whitespace-nowrap">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                <i class="fas fa-user text-green-600"></i>
-              </div>
-              <div class="ml-4">
-                <div class="text-sm font-medium text-gray-900">${farmer.full_name}</div>
-                <div class="text-sm text-gray-500">${farmer.email}</div>
-              </div>
+            <div class="ml-4">
+              <div class="text-sm font-medium text-gray-900">${farmer.full_name}</div>
+              <div class="text-sm text-gray-500">${farmer.email}</div>
             </div>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.email}</td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.barangay}</td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-            ${formatDate(farmer.created_at)}
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap">
-            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Active
-            </span>
-          </td>
-          <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
-            <button class="text-blue-600 hover:text-blue-900">
-              <i class="fas fa-edit"></i> Edit
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
+          </div>
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.email}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">${farmer.barangay}</td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+          ${formatDate(farmer.created_at)}
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap">
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            Active
+          </span>
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium">
+          <button class="text-blue-600 hover:text-blue-900" onclick="viewFarmerDetails('${farmer.id}')">
+            <i class="fas fa-eye"></i> View
+          </button>
+        </td>
+      </tr>
+    `).join('');
+    
+    console.log(`👥 Farmers List: Displaying ${uniqueFarmers.length} unique farmers (removed ${farmersToRender.length - uniqueFarmers.length} duplicates)`);
   }
+}
 
+// Enhanced function to get truly unique farmers using multiple criteria
+function getTrulyUniqueFarmers(farmersList) {
+  if (!farmersList || !Array.isArray(farmersList)) return [];
+  
+  const seen = new Map();
+  const uniqueFarmers = [];
+  
+  farmersList.forEach(farmer => {
+    if (!farmer || !farmer.id) return;
+    
+    // Create multiple unique keys to catch different types of duplicates
+    const keys = [
+      farmer.email?.toLowerCase().trim(),
+      `${farmer.full_name?.toLowerCase().trim()}_${farmer.barangay?.toLowerCase().trim()}`,
+      farmer.id // Always use ID as fallback
+    ].filter(Boolean);
+    
+    // Check if we've seen any of these keys
+    const isDuplicate = keys.some(key => seen.has(key));
+    
+    if (!isDuplicate) {
+      // Mark all keys as seen
+      keys.forEach(key => seen.set(key, true));
+      uniqueFarmers.push(farmer);
+    } else {
+      console.log(`🗑️ Duplicate farmer filtered: ${farmer.full_name} (${farmer.email}) - ${farmer.barangay}`);
+    }
+  });
+  
+  return uniqueFarmers;
+} 
+
+// Update dashboard with unique statistics
+function updateDashboardStats() {
+  const uniquePendingFarmers = getUniqueFarmersFromSubmissions(submissions);
+  const uniqueApprovedFarmers = getUniqueFarmersFromSubmissions(approvedSubmissions);
+  
+  // Update the main dashboard numbers
+  elements.dashboardPending.textContent = submissions.length;
+  elements.pendingCount.textContent = submissions.length;
+  elements.dashboardApproved.textContent = approvedSubmissions.length;
+  elements.dashboardFarmers.textContent = farmers.length;
+  
+  // Log unique statistics for debugging
+  console.log(`👥 Unique Farmers Stats:
+    - Total unique farmers: ${farmers.length}
+    - Farmers with pending submissions: ${uniquePendingFarmers.size}
+    - Farmers with approved farms: ${uniqueApprovedFarmers.size}
+  `);
+}
+
+// Helper function to get unique farmers from submissions
+function getUniqueFarmersFromSubmissions(submissions) {
+  const uniqueFarmers = new Set();
+  
+  submissions.forEach(submission => {
+    if (submission.farmers?.email) {
+      uniqueFarmers.add(submission.farmers.email.toLowerCase().trim());
+    }
+  });
+  
+  return uniqueFarmers;
+}
   // FILTER FUNCTIONS (unchanged)
   function filterSubmissions() {
     const searchTerm = elements.searchFarmer.value.toLowerCase();
@@ -1126,14 +1364,124 @@
   }
 
   function filterFarmers() {
-    const searchTerm = elements.searchFarmers.value.toLowerCase();
-    const filtered = farmers.filter(farmer => 
-      farmer.full_name.toLowerCase().includes(searchTerm) ||
-      farmer.barangay.toLowerCase().includes(searchTerm) ||
-      farmer.email.toLowerCase().includes(searchTerm)
-    );
-    renderFarmersTable(filtered);
+  const searchTerm = elements.searchFarmers.value.toLowerCase();
+  const filtered = farmers.filter(farmer => 
+    farmer.full_name.toLowerCase().includes(searchTerm) ||
+    farmer.barangay.toLowerCase().includes(searchTerm) ||
+    farmer.email.toLowerCase().includes(searchTerm)
+  );
+  
+  // Use the enhanced unique farmers function for display
+  renderFarmersTable(filtered);
+}
+function filterFarmers() {
+  const searchTerm = elements.searchFarmers.value.toLowerCase();
+  const filtered = farmers.filter(farmer => 
+    farmer.full_name.toLowerCase().includes(searchTerm) ||
+    farmer.barangay.toLowerCase().includes(searchTerm) ||
+    farmer.email.toLowerCase().includes(searchTerm)
+  );
+  
+  // Use the enhanced unique farmers function for display
+  renderFarmersTable(filtered);
+}
+
+// ✅ PUT FUNCTION 3 HERE - View farmer details and their submissions
+async function viewFarmerDetails(farmerId) {
+  try {
+    // Get farmer basic info
+    const { data: farmer, error: farmerError } = await supabase
+      .from('farmers')
+      .select('*')
+      .eq('id', farmerId)
+      .single();
+
+    if (farmerError) throw farmerError;
+
+    // Get all farms for this farmer
+    const { data: farms, error: farmsError } = await supabase
+      .from('farms')
+      .select(`
+        *,
+        crops(*)
+      `)
+      .eq('farmer_id', farmerId)
+      .order('created_at', { ascending: false });
+
+    if (farmsError) throw farmsError;
+
+    // Create a simple modal to show farmer details
+    const modalContent = `
+      <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-green-800">Farmer Details</h3>
+            <button onclick="closeFarmerModal()" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div>
+              <h4 class="font-semibold text-green-700 mb-2">Personal Information</h4>
+              <p><strong>Name:</strong> ${farmer.full_name}</p>
+              <p><strong>Email:</strong> ${farmer.email}</p>
+              <p><strong>Barangay:</strong> ${farmer.barangay}</p>
+              <p><strong>Registered:</strong> ${formatDate(farmer.created_at)}</p>
+            </div>
+            <div>
+              <h4 class="font-semibold text-green-700 mb-2">Farm Statistics</h4>
+              <p><strong>Total Farms:</strong> ${farms.length}</p>
+              <p><strong>Approved:</strong> ${farms.filter(f => f.farm_status === 'approved').length}</p>
+              <p><strong>Pending:</strong> ${farms.filter(f => f.farm_status === 'pending').length}</p>
+              <p><strong>Rejected:</strong> ${farms.filter(f => f.farm_status === 'rejected').length}</p>
+            </div>
+          </div>
+
+          ${farms.length > 0 ? `
+            <h4 class="font-semibold text-green-700 mb-3">Farm Submissions</h4>
+            <div class="space-y-3">
+              ${farms.map(farm => `
+                <div class="border rounded-lg p-3 ${farm.farm_status === 'approved' ? 'bg-green-50 border-green-200' : farm.farm_status === 'pending' ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <p class="font-medium">${farm.crops?.[0]?.crop_type || 'Multiple Crops'}</p>
+                      <p class="text-sm text-gray-600">${farm.land_area} ${farm.area_unit} • ${farm.terrain_type}</p>
+                      <p class="text-sm">Status: 
+                        <span class="font-medium ${farm.farm_status === 'approved' ? 'text-green-600' : farm.farm_status === 'pending' ? 'text-yellow-600' : 'text-red-600'}">
+                          ${farm.farm_status}
+                        </span>
+                      </p>
+                    </div>
+                    <span class="text-sm text-gray-500">${formatDate(farm.created_at)}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<p class="text-gray-500 text-center py-4">No farm submissions yet</p>'}
+        </div>
+      </div>
+    `;
+
+    // Create and show modal
+    const modal = document.createElement('div');
+    modal.innerHTML = modalContent;
+    modal.id = 'farmerDetailsModal';
+    document.body.appendChild(modal);
+
+  } catch (error) {
+    console.error('Error loading farmer details:', error);
+    showToast('Error loading farmer details', 'error');
   }
+}
+
+// Close farmer modal
+function closeFarmerModal() {
+  const modal = document.getElementById('farmerDetailsModal');
+  if (modal) {
+    modal.remove();
+  }
+}
 
   // PAGINATION FUNCTIONS (unchanged)
   function paginateSubmissions(direction) {
@@ -1166,27 +1514,37 @@
   }
 
   async function refreshData() {
-    try {
-      submissions = await fetchPendingSubmissions();
-      approvedSubmissions = await fetchApprovedSubmissions();
-      farmers = await fetchFarmers();
-      
-      // Update dashboard counts
-      elements.dashboardPending.textContent = submissions.length;
-      elements.pendingCount.textContent = submissions.length;
-      elements.dashboardApproved.textContent = approvedSubmissions.length;
-      elements.dashboardFarmers.textContent = farmers.length;
-      
-      // Render tables
-      renderPendingTable();
-      renderApprovedTable();
-      renderFarmersTable();
-      
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-      showToast('Error refreshing data', 'error');
-    }
+  try {
+    submissions = await fetchPendingSubmissions();
+    approvedSubmissions = await fetchApprovedSubmissions();
+    farmers = await fetchFarmers();
+    
+    // ✅ UPDATE: Use the new dashboard stats function
+    updateDashboardStats();
+    
+    // Render tables
+    renderPendingTable();
+    renderApprovedTable();
+    renderFarmersTable();
+    
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    showToast('Error refreshing data', 'error');
   }
+}
+
+// Helper function to get unique farmers from submissions
+function getUniqueFarmersFromSubmissions(submissions) {
+  const uniqueFarmers = new Set();
+  
+  submissions.forEach(submission => {
+    if (submission.farmers?.email) {
+      uniqueFarmers.add(submission.farmers.email.toLowerCase().trim());
+    }
+  });
+  
+  return uniqueFarmers;
+}
 
   // EVENT LISTENERS SETUP - FIXED: Added closeModalBtn event listener
   function setupEventListeners() {
@@ -1326,6 +1684,9 @@
     
     await refreshData();
   });
+  // Make functions available globally for onclick handlers
+window.viewFarmerDetails = viewFarmerDetails;
+window.closeFarmerModal = closeFarmerModal;
 </script>
 </body>
 </html>
