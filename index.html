@@ -381,6 +381,12 @@ body {
   margin-right: 5px;
   display: inline-block;
 }
+
+/* Add this to your existing CSS */
+#barangayTitle {
+  cursor: pointer;
+  user-select: none; /* Prevents text selection when clicking */
+}
 </style>
 </head>
 <body class="bg-white">
@@ -1537,55 +1543,62 @@ function showCropData(barangayName) {
     }
 
     // Slide panel functionality
-    const slidePanel = document.getElementById('slidePanel');
-    const slidePanelHandle = document.getElementById('slidePanelHandle');
-    let isPanelOpen = false;
-    
-    function openSlidePanel() {
-      if (slidePanel) slidePanel.classList.add('open');
-      isPanelOpen = true;
-    }
-    
-    function closeSlidePanel() {
-      if (slidePanel) slidePanel.classList.remove('open');
-      isPanelOpen = false;
-    }
-    
-    function toggleSlidePanel() {
-      if (isPanelOpen) {
+    // Slide panel functionality
+const slidePanel = document.getElementById('slidePanel');
+const slidePanelHandle = document.getElementById('slidePanelHandle');
+let isPanelOpen = false;
+
+function openSlidePanel() {
+    if (slidePanel) slidePanel.classList.add('open');
+    isPanelOpen = true;
+}
+
+function closeSlidePanel() {
+    if (slidePanel) slidePanel.classList.remove('open');
+    isPanelOpen = false;
+}
+
+function toggleSlidePanel() {
+    if (isPanelOpen) {
         closeSlidePanel();
-      } else {
+    } else {
         openSlidePanel();
-      }
     }
+}
+
+// Make the entire header area clickable
+const barangayTitle = document.getElementById('barangayTitle');
+if (barangayTitle) {
+    barangayTitle.style.cursor = 'pointer';
+    barangayTitle.addEventListener('click', toggleSlidePanel);
+}
+
+// Handle click
+if (slidePanelHandle) {
+    slidePanelHandle.addEventListener('click', toggleSlidePanel);
+}
+
+// Enhanced touch handling
+if (slidePanel) {
+    let touchStartY = 0;
     
-    // Add click handler to the panel handle
-    if (slidePanelHandle) {
-      slidePanelHandle.addEventListener('click', toggleSlidePanel);
-    }
+    slidePanel.addEventListener('touchstart', function(e) {
+        touchStartY = e.touches[0].clientY;
+    });
     
-    // Add swipe functionality for touch devices
-    if (slidePanel) {
-      let touchStartY = 0;
-      let touchEndY = 0;
-      
-      slidePanel.addEventListener('touchstart', function(e) {
-        touchStartY = e.changedTouches[0].screenY;
-      }, false);
-      
-      slidePanel.addEventListener('touchend', function(e) {
-        touchEndY = e.changedTouches[0].screenY;
-        handleSwipe();
-      }, false);
-      
-      function handleSwipe() {
-        if (touchEndY - touchStartY > 50 && isPanelOpen) {
-          closeSlidePanel();
-        } else if (touchStartY - touchEndY > 50 && !isPanelOpen) {
-          openSlidePanel();
+    slidePanel.addEventListener('touchend', function(e) {
+        const touchEndY = e.changedTouches[0].clientY;
+        const swipeDistance = touchEndY - touchStartY;
+        
+        if (Math.abs(swipeDistance) > 20) { // Swipe threshold
+            if (swipeDistance > 0 && isPanelOpen) {
+                closeSlidePanel(); // Swipe down
+            } else if (swipeDistance < 0 && !isPanelOpen) {
+                openSlidePanel(); // Swipe up
+            }
         }
-      }
-    }
+    });
+}
 
     // Populate barangay selector
     const selector = document.getElementById('barangaySelector');
