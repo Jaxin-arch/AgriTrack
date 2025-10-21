@@ -590,15 +590,28 @@ body {
   
 
   // All available crops from your list
-  const ALL_CROPS = [
+const ALL_CROPS = [
     'banana', 'durian', 'coconut', 'mango', 'pineapple', 'papaya', 'watermelon',
-    'rice', 'corn', 'cabbage', 'petchay', 'kangkong', 'spinach', 'tomato',
+    'rice', 'corn', 'cabbage', 'pechay', 'kangkong', 'spinach', 'tomato',
     'eggplant', 'bell pepper', 'ampalaya', 'sayote', 'squash', 'okra',
-    'baguio beans', 'string beans', 'mung bean', 'peanut', 'carrots', 'radish',
+    'baguio beans', 'string_beans', 'mung bean', 'peanut', 'carrots', 'radish',
     'sweet potato', 'cassava', 'ginger', 'garlic', 'onion', 'coffee', 'cacao',
     'abaca', 'rubber', 'sugarcane'
-  ];
+];
+ // Add this function after your ALL_CROPS array
+function normalizeBarangayNameForData(barangayName) {
+    return barangayName.toLowerCase().trim();
+} 
 
+  function debugBarangayData() {
+    console.log('🗺️ DEBUG: Real barangay data:', window.realBarangayData);
+    
+    if (window.realBarangayData) {
+        Object.entries(window.realBarangayData).forEach(([barangay, data]) => {
+            console.log(`🗺️ ${barangay}:`, data);
+        });
+    }
+}
   // Crop images mapping
   const CROP_IMAGES = {
     'banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
@@ -611,7 +624,7 @@ body {
     'rice': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
     'corn': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
     'cabbage': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
-    'petchay': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
+    'pechay': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
     'kangkong': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
     'spinach': 'https://cdn-icons-png.flaticon.com/512/11453/11453869.png',
     'tomato': 'https://cdn-icons-png.flaticon.com/512/8645/8645342.png',
@@ -622,7 +635,7 @@ body {
     'squash': 'https://cdn-icons-png.flaticon.com/512/6490/6490234.png',
     'okra': 'https://cdn-icons-png.flaticon.com/512/7217/7217794.png',
     'baguio beans': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
-    'string beans': 'https://cdn-icons-png.flaticon.com/512/16442/16442794.png',
+    'string_beans': 'https://cdn-icons-png.flaticon.com/512/16442/16442794.png',
     'mung bean': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
     'peanut': 'https://cdn-icons-png.flaticon.com/512/6835/6835694.png',
     'carrots': 'https://cdn-icons-png.flaticon.com/512/3079/3079537.png',
@@ -668,7 +681,9 @@ body {
         }
       });
     }
+// Add this debug function and call it after updateBarangayCropData
 
+    
     // Load initial data
 loadApprovedFarmsData();
 debugDataLoading(); // Add this line
@@ -755,12 +770,13 @@ async function debugDataLoading() {
         approvedFarms = farms || [];
 
         if (approvedFarms.length > 0) {
-            console.log('🔍 DEBUG: Processing crop data...');
-            cropStatistics = processCropData(approvedFarms);
-            console.log('🔍 DEBUG: cropStatistics after processing:', cropStatistics);
-            updateTopCropsUI(cropStatistics);
-            updateBarangayCropData(approvedFarms);
-        } else {
+    console.log('🔍 DEBUG: Processing crop data...');
+    cropStatistics = processCropData(approvedFarms);
+    console.log('🔍 DEBUG: cropStatistics after processing:', cropStatistics);
+    updateTopCropsUI(cropStatistics);
+    updateBarangayCropData(approvedFarms);
+    debugBarangayData(); // ADD THIS LINE
+} else {
             console.log('🔍 DEBUG: No approved farms found');
             updateTopCropsUI([]);
         }
@@ -843,31 +859,35 @@ async function debugDataLoading() {
 }
 
   // Update barangay crop data for the map with real data
-  function updateBarangayCropData(farms) {
+  // Update barangay crop data for the map with real data
+function updateBarangayCropData(farms) {
     const barangayData = {};
     
     farms.forEach(farm => {
         const barangay = farm.farmers?.barangay;
         if (!barangay) return;
         
-        if (!barangayData[barangay]) {
-            barangayData[barangay] = {
+        // Normalize to lowercase for consistent matching
+        const normalizedBarangay = barangay.toLowerCase().trim();
+        
+        if (!barangayData[normalizedBarangay]) {
+            barangayData[normalizedBarangay] = {
                 crops: {},
                 totalFarms: 0,
                 totalArea: 0
             };
         }
         
-        barangayData[barangay].totalFarms++;
-        barangayData[barangay].totalArea += (farm.land_area || 0);
+        barangayData[normalizedBarangay].totalFarms++;
+        barangayData[normalizedBarangay].totalArea += (farm.land_area || 0);
         
         if (farm.crops && farm.crops.length > 0) {
             farm.crops.forEach(crop => {
                 const cropType = crop.crop_type || 'Unknown';
                 // Only include crops from our defined list
                 if (ALL_CROPS.includes(cropType)) {
-                    barangayData[barangay].crops[cropType] = 
-                        (barangayData[barangay].crops[cropType] || 0) + 1;
+                    barangayData[normalizedBarangay].crops[cropType] = 
+                        (barangayData[normalizedBarangay].crops[cropType] || 0) + 1;
                 }
             });
         }
@@ -875,7 +895,7 @@ async function debugDataLoading() {
     
     window.realBarangayData = barangayData;
     console.log('🗺️ Updated barangay data with real farms:', barangayData);
-  }
+}
 
   // Load market prices data
   async function loadMarketPricesData() {
@@ -1351,16 +1371,16 @@ async function debugDataLoading() {
     }
 
     function onEachFeature(feature, layer) {
-      layer.on({
+    layer.on({
         mouseover: highlightFeature,
         mouseout: resetHighlight,
         click: function(e) {
-          showBarangay(feature);
-          const selector = document.getElementById('barangaySelector');
-          if (selector) selector.value = feature.properties.adm4_en;
+            showBarangay(feature);
+            const selector = document.getElementById('barangaySelector');
+            if (selector) selector.value = feature.properties.adm4_en.toLowerCase(); // ← CHANGED
         }
-      });
-    }
+    });
+}
 
     // Function to show a single barangay
     function showBarangay(feature) {
@@ -1392,73 +1412,95 @@ async function debugDataLoading() {
     }
 
     // Function to show REAL crop data for a barangay
-    function showCropData(barangayName) {
-      // Use real data from approved farms
-      const realData = window.realBarangayData?.[barangayName];
-      const data = realData ? convertRealDataToPieData(realData) : getFallbackBarangayData(barangayName);
-      
-      // Update title
-      const barangayTitleElement = document.getElementById('barangayTitle');
-      if (barangayTitleElement) {
+    // Function to show REAL crop data for a barangay
+// Function to show REAL crop data for a barangay
+function showCropData(barangayName) {
+    // Normalize the barangay name to lowercase for matching with database
+    const normalizedBarangayName = normalizeBarangayNameForData(barangayName);
+    
+    // Use real data from approved farms
+    const realData = window.realBarangayData?.[normalizedBarangayName];
+    
+    console.log('📊 DEBUG showCropData: Barangay:', barangayName, 'Normalized:', normalizedBarangayName);
+    console.log('📊 DEBUG showCropData: realData available?', !!realData);
+    console.log('📊 DEBUG showCropData: realData content:', realData);
+    
+    const data = realData ? convertRealDataToPieData(realData) : getFallbackBarangayData(barangayName);
+    
+    console.log('📊 DEBUG showCropData: Final pie chart data:', data);
+    
+    // Update title
+    const barangayTitleElement = document.getElementById('barangayTitle');
+    if (barangayTitleElement) {
         barangayTitleElement.textContent = barangayName;
-      }
-      
-      // Update statistics with REAL data
-      if (realData) {
+    }
+    
+    // Update statistics with REAL data
+    if (realData) {
         document.getElementById('barangayArea').textContent = Math.round(realData.totalArea) + ' ha';
         document.getElementById('barangayPopulation').textContent = realData.totalFarms + ' farms';
-      } else {
+    } else {
         document.getElementById('barangayArea').textContent = '--';
         document.getElementById('barangayPopulation').textContent = '--';
-      }
-      
-      // Update pie chart
-      if (window.pieChart) {
+    }
+    
+    // Update pie chart
+    if (window.pieChart) {
         const chartData = data.map(item => ({
-          value: item.percentage,
-          name: item.crop,
-          itemStyle: { color: item.color }
+            value: item.percentage,
+            name: item.crop,
+            itemStyle: { color: item.color }
         }));
         
+        console.log('📊 DEBUG showCropData: Chart data sent to pie chart:', chartData);
+        
         window.pieChart.setOption({
-          tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
-          series: [{
-            name: 'Crop Distribution',
-            type: 'pie',
-            radius: ['45%', '70%'],
-            avoidLabelOverlap: false,
-            itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
-            label: { show: false, position: 'center' },
-            emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
-            labelLine: { show: false },
-            data: chartData
-          }]
+            tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+            series: [{
+                name: 'Crop Distribution',
+                type: 'pie',
+                radius: ['45%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: chartData
+            }]
         });
-      }
-      
-      // Update legend
-      const legendElement = document.getElementById('cropLegend');
-      if (legendElement) {
+    }
+    
+    // Update legend
+    const legendElement = document.getElementById('cropLegend');
+    if (legendElement) {
         const legendHtml = data.map(item => `
-          <div class="crop-legend-item">
-            <span class="crop-legend-color" style="background-color:${item.color}"></span>
-            <span>${item.crop} (${item.percentage}%)</span>
-          </div>
+            <div class="crop-legend-item">
+                <span class="crop-legend-color" style="background-color:${item.color}"></span>
+                <span>${item.crop} (${item.percentage}%)</span>
+            </div>
         `).join('');
         legendElement.innerHTML = legendHtml;
-      }
     }
+}
 
     // Convert real barangay data to pie chart format
-    function convertRealDataToPieData(realBarangayData) {
+   function convertRealDataToPieData(realBarangayData) {
+      // ADD DEBUG LINES:
+      console.log('📊 DEBUG convertRealDataToPieData: Input:', realBarangayData);
+      
       const crops = realBarangayData.crops;
       const total = Object.values(crops).reduce((sum, count) => sum + count, 0);
       
+      // ADD DEBUG LINES:
+      console.log('📊 DEBUG convertRealDataToPieData: Total crop count:', total);
+      console.log('📊 DEBUG convertRealDataToPieData: Crops object:', crops);
+      
       if (total === 0) {
+        console.log('📊 DEBUG convertRealDataToPieData: No crop data, using fallback');
         return [{ crop: "No Data", percentage: 100, color: '#9E9E9E' }];
       }
       
-      return Object.entries(crops)
+      const result = Object.entries(crops)
         .map(([crop, count]) => ({
           crop: crop,
           percentage: Math.round((count / total) * 100),
@@ -1466,23 +1508,27 @@ async function debugDataLoading() {
         }))
         .sort((a, b) => b.percentage - a.percentage)
         .slice(0, 6);
+      
+      // ADD DEBUG LINE:
+      console.log('📊 DEBUG convertRealDataToPieData: Final result:', result);
+      return result;
     }
 
-    function getCropColor(cropType) {
-      const colorMap = {
-        'Banana': '#2E7D32', 'Durian': '#4CAF50', 'Coconut': '#795548', 'Mango': '#FF9800',
-        'Pineapple': '#FFC107', 'Papaya': '#FF5722', 'Watermelon': '#F44336', 'Rice': '#FFEB3B',
-        'Corn': '#FF9800', 'Cabbage': '#8BC34A', 'Petchay': '#689F38', 'Kangkong': '#4CAF50',
-        'Spinach': '#388E3C', 'Tomato': '#F44336', 'Eggplant': '#9C27B0', 'Bell Pepper': '#FF5722',
-        'Ampalaya': '#795548', 'Sayote': '#8BC34A', 'Squash': '#FF9800', 'Okra': '#4CAF50',
-        'Baguio Beans': '#689F38', 'String Beans': '#8BC34A', 'Mung Bean': '#CDDC39', 'Peanut': '#795548',
-        'Carrots': '#FF9800', 'Radish': '#F44336', 'Sweet Potato': '#FF5722', 'Cassava': '#795548',
-        'Ginger': '#FF9800', 'Garlic': '#9E9E9E', 'Onion': '#9C27B0', 'Coffee': '#5D4037',
-        'Cacao': '#6D4C41', 'Abaca': '#795548', 'Rubber': '#5D4037', 'Sugarcane': '#795548'
-      };
-      
-      return colorMap[cropType] || '#' + Math.floor(Math.random()*16777215).toString(16);
-    }
+   function getCropColor(cropType) {
+    const colorMap = {
+        'banana': '#2E7D32', 'durian': '#4CAF50', 'coconut': '#795548', 'mango': '#FF9800',
+        'pineapple': '#FFC107', 'papaya': '#FF5722', 'watermelon': '#F44336', 'rice': '#FFEB3B',
+        'corn': '#FF9800', 'cabbage': '#8BC34A', 'pechay': '#689F38', 'kangkong': '#4CAF50',
+        'spinach': '#388E3C', 'tomato': '#F44336', 'eggplant': '#9C27B0', 'bell pepper': '#FF5722',
+        'ampalaya': '#795548', 'sayote': '#8BC34A', 'squash': '#FF9800', 'okra': '#4CAF50',
+        'baguio beans': '#689F38', 'string_beans': '#8BC34A', 'mung bean': '#CDDC39', 'peanut': '#795548',
+        'carrots': '#FF9800', 'radish': '#F44336', 'sweet potato': '#FF5722', 'cassava': '#795548',
+        'ginger': '#FF9800', 'garlic': '#9E9E9E', 'onion': '#9C27B0', 'coffee': '#5D4037',
+        'cacao': '#6D4C41', 'abaca': '#795548', 'rubber': '#5D4037', 'sugarcane': '#795548'
+    };
+    
+    return colorMap[cropType] || '#' + Math.floor(Math.random()*16777215).toString(16);
+}
 
     function getFallbackBarangayData(barangayName) {
       return [
@@ -1544,12 +1590,12 @@ async function debugDataLoading() {
     // Populate barangay selector
     const selector = document.getElementById('barangaySelector');
     if (selector) {
-      maragusanGeoJSON.features.forEach(feature => {
-        const option = document.createElement('option');
-        option.value = feature.properties.adm4_en;
-        option.textContent = feature.properties.adm4_en;
-        selector.appendChild(option);
-      });
+     maragusanGeoJSON.features.forEach(feature => {
+    const option = document.createElement('option');
+    option.value = feature.properties.adm4_en.toLowerCase(); // ← CHANGED
+    option.textContent = feature.properties.adm4_en;
+    selector.appendChild(option);
+});
 
       // Barangay selector change handler
       selector.addEventListener('change', function() {
