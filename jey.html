@@ -132,6 +132,26 @@
             border-bottom-right-radius: 0;
             border-right: 0;
         }
+        /* Area warning styles */
+        #areaWarning {
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        #areaHint {
+            transition: color 0.3s ease;
+        }
+        .text-yellow-600 {
+            color: #d97706;
+        }
         @media (max-width: 640px) {
             .upload-options {
                 flex-direction: column;
@@ -218,8 +238,8 @@
                             <option value="new_panay">New Panay</option>
                             
                             <option value="paloc">Paloc</option>
-                            <option value="pantar">Pamintaran</option>
-                            <option value="pantar">Parasanon</option>
+                            <option value="pamintaran">Pamintaran</option>
+                            <option value="parasanon">Parasanon</option>
                               <option value="talian">Talian</option>
                             <option value="tandik">Tandik</option>
                             <option value="tigbao">Tigbao</option>
@@ -245,13 +265,23 @@
                         <div class="relative unit-select-wrapper">
                             <select id="areaUnit" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
                                 <option value="hectares" selected>Hectares</option>
-                                <option value="sqm">Square Meters</option>
                             </select>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <i class="ri-arrow-down-s-line text-gray-400"></i>
                             </div>
                         </div>
                     </div>
+                    <!-- Area Warning Container -->
+                    <div id="areaWarning" class="hidden mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <div class="flex items-start">
+                            <i class="ri-alert-line text-red-600 mt-0.5 mr-2"></i>
+                            <div>
+                                <p class="text-sm font-medium text-red-800" id="areaWarningText"></p>
+                                <p class="text-xs text-red-600 mt-1" id="areaLimitInfo"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1" id="areaHint">Enter the land area of your farm</p>
                 </div>
                 <div class="mb-4">
                     <label for="ownershipType" class="block text-sm font-medium text-gray-700 mb-1">Land Ownership Type</label>
@@ -469,13 +499,15 @@
                 
                 <p class="text-xs text-gray-500 italic">Your ID will be reviewed by our admin team to verify your farmer status. This helps us maintain the integrity of our agricultural database.</p>
             </div>
-<!-- Progress Bar - Add this to your form -->
-<div id="progressBar" class="hidden mt-4">
-    <div class="bg-gray-200 rounded-full h-2">
-        <div id="progressFill" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-    </div>
-    <p id="progressText" class="text-sm text-gray-600 mt-1">Starting submission...</p>
-</div>
+
+            <!-- Progress Bar -->
+            <div id="progressBar" class="hidden mt-4">
+                <div class="bg-gray-200 rounded-full h-2">
+                    <div id="progressFill" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-600 mt-1">Starting submission...</p>
+            </div>
+
             <!-- Submit Button -->
             <div class="flex flex-col">
                 <button type="submit" class="bg-primary hover:bg-green-700 text-white py-3 rounded-button font-medium cursor-pointer transition-colors" id="submitButton">
@@ -499,463 +531,632 @@
     </div>
 
     <script>
+        // Store barangay limits in memory
+        let barangayLimits = {};
 
-
-    // SINGLE testConnection function - no duplicates!
-    async function testConnection() {
-        console.log('🔌 Starting connection test...');
-        
-        const client = window.supabaseClient;
-        
-        if (!client) {
-            alert('❌ Supabase client not ready.');
-            return;
-        }
-        
-        try {
-            console.log('Testing with client:', client);
+        // SINGLE testConnection function - no duplicates!
+        async function testConnection() {
+            console.log('🔌 Starting connection test...');
             
-            const { data, error } = await client.storage.listBuckets();
+            const client = window.supabaseClient;
             
-            if (error) {
-                console.error('❌ Storage error:', error);
-                alert('Error: ' + error.message);
-            } else {
-                console.log('✅ Connected! Buckets:', data);
-                alert('🎉 SUCCESS! Connected to Supabase!');
+            if (!client) {
+                alert('❌ Supabase client not ready.');
+                return;
             }
             
-        } catch (error) {
-            console.error('❌ Connection failed:', error);
-            alert('Connection failed: ' + error.message);
-        }
-    }
-
-    // DEBUG: Check form elements exist
-    function debugFormElements() {
-        console.log('🔍 Checking form elements:');
-        const elements = ['fullName', 'email', 'barangay', 'landArea', 'areaUnit', 'ownershipType', 'terrainType'];
-        elements.forEach(id => {
-            const element = document.getElementById(id);
-            console.log(`${id}:`, element ? 'FOUND' : 'MISSING', element);
-        });
-    }
-
-    // UPDATED: File upload function with RLS fix
-    async function uploadIDPhoto(file) {
-        try {
-            console.log('📤 Uploading file...');
-            
-            const fileExt = file.name.split('.').pop();
-            const fileName = `submissions/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-            
-            // Try to upload to storage
-            const { data, error } = await window.supabaseClient.storage
-                .from('verification-photos')
-                .upload(fileName, file);
-            
-            if (error) {
-                console.warn('⚠️ Storage upload failed, using base64 fallback:', error.message);
-                
-                // FALLBACK: Convert to base64 and return as data URL
-                const base64Data = await fileToBase64(file);
-                return {
-                    success: true,
-                    base64Data: base64Data,
-                    fileName: fileName,
-                    storageFailed: true
-                };
-            }
-            
-            console.log('✅ File uploaded successfully:', fileName);
-            return {
-                success: true,
-                fileName: fileName,
-                storageFailed: false
-            };
-            
-        } catch (error) {
-            console.error('❌ Upload failed:', error);
-            
-            // FALLBACK: Convert to base64 on error
             try {
-                const base64Data = await fileToBase64(file);
-                return {
-                    success: true,
-                    base64Data: base64Data,
-                    fileName: file.name,
-                    storageFailed: true
-                };
-            } catch (fallbackError) {
-                throw new Error('Upload failed and fallback also failed: ' + error.message);
-            }
-        }
-    }
-
-    // Helper function to convert file to base64
-    function fileToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = error => reject(error);
-        });
-    }
-
-    // Collect all form data
-    function collectFormData() {
-        // DEBUG: Check elements first
-        debugFormElements();
-        
-        const formData = {
-            farmer: {
-                full_name: document.getElementById('fullName').value,
-                email: document.getElementById('email').value,
-                barangay: document.getElementById('barangay').value
-            },
-            farm: {
-                land_area: parseFloat(document.getElementById('landArea').value),
-                area_unit: document.getElementById('areaUnit').value,
-                ownership_type: document.getElementById('ownershipType').value || null,
-                terrain_type: document.getElementById('terrainType').value || null,
-                farm_status: 'pending'
-            },
-            crops: []
-        };
-        
-        // Collect crop data
-        const cropSections = document.querySelectorAll('.crop-section');
-        cropSections.forEach(section => {
-            const cropData = {
-                crop_type: section.querySelector('select[name="cropType[]"]').value,
-                area_planted: parseFloat(section.querySelector('input[name="areaPlanted[]"]').value),
-                planted_area_unit: section.querySelector('select[name="plantedAreaUnit[]"]').value,
-                date_planted: section.querySelector('input[name="datePlanted[]"]').value,
-                expected_harvest_date: section.querySelector('input[name="harvestDate[]"]').value,
-                harvest_yield: section.querySelector('input[name="harvestYield[]"]').value ? 
-                              parseFloat(section.querySelector('input[name="harvestYield[]"]').value) : null,
-                yield_unit: section.querySelector('select[name="yieldUnit[]"]').value || null
-            };
-            formData.crops.push(cropData);
-        });
-        
-        return formData;
-    }
-
-    // CORRECTED SUBMISSION FUNCTION - UPDATED FOR BASE64 FALLBACK
-    async function submitToSupabase(formData, idPhotoResult) {
-        try {
-            console.log('🚀 Starting database submission...');
-            
-            // 1. Test connection first
-            console.log('🔍 Testing database connection...');
-            const { error: testError } = await window.supabaseClient
-                .from('farmers')
-                .select('count')
-                .limit(1);
+                console.log('Testing with client:', client);
                 
-            if (testError) {
-                console.warn('⚠️ Initial connection test failed, but continuing:', testError.message);
-            } else {
-                console.log('✅ Database connection OK');
-            }
-            
-            // 2. Insert farmer - SIMPLIFIED APPROACH
-            console.log('👨‍🌾 Inserting farmer:', formData.farmer);
-            
-            // FIX: Use simple insert without complex parameters
-            const { data: farmerData, error: farmerError } = await window.supabaseClient
-                .from('farmers')
-                .insert([
-                    {
-                        full_name: formData.farmer.full_name,
-                        email: formData.farmer.email,
-                        barangay: formData.farmer.barangay
-                    }
-                ])
-                .select();
-            
-            if (farmerError) {
-                console.error('❌ Farmer insertion error:', farmerError);
+                const { data, error } = await client.storage.listBuckets();
                 
-                // SPECIAL HANDLING FOR BARANGAY COLUMN ISSUE
-                if (farmerError.message.includes('barangay') && farmerError.message.includes('schema cache')) {
-                    throw new Error('Database configuration issue. Please contact administrator to fix the barangay column.');
+                if (error) {
+                    console.error('❌ Storage error:', error);
+                    alert('Error: ' + error.message);
+                } else {
+                    console.log('✅ Connected! Buckets:', data);
+                    alert('🎉 SUCCESS! Connected to Supabase!');
                 }
                 
-                throw new Error('Farmer insertion failed: ' + farmerError.message);
+            } catch (error) {
+                console.error('❌ Connection failed:', error);
+                alert('Connection failed: ' + error.message);
+            }
+        }
+
+        // Fetch barangay limits from database
+        async function fetchBarangayLimits() {
+            try {
+                console.log('📊 Fetching barangay limits...');
+                const { data, error } = await window.supabaseClient
+                    .from('barangay_limits')
+                    .select('*');
+                
+                if (error) {
+                    console.error('❌ Error fetching barangay limits:', error);
+                    return;
+                }
+                
+                // Convert array to object for easy lookup
+                barangayLimits = {};
+                data.forEach(limit => {
+                    barangayLimits[limit.barangay_code] = limit;
+                });
+                
+                console.log('✅ Barangay limits loaded:', Object.keys(barangayLimits).length, 'barangays');
+                
+                // For testing purposes, if no data exists, create sample data
+                if (Object.keys(barangayLimits).length === 0) {
+                    console.log('⚠️ No barangay limits found, creating sample data');
+                    createSampleBarangayLimits();
+                }
+            } catch (error) {
+                console.error('❌ Failed to fetch barangay limits:', error);
+                createSampleBarangayLimits();
+            }
+        }
+
+        // Create sample barangay limits for testing
+        function createSampleBarangayLimits() {
+            barangayLimits = {
+                'mabugnao': {
+                    barangay_code: 'mabugnao',
+                    barangay_name: 'Mabugnao',
+                    max_land_area_hectares: 300.00,
+                    total_available_area: 300.00
+                },
+                'bagong_silang': {
+                    barangay_code: 'bagong_silang',
+                    barangay_name: 'Bagong Silang',
+                    max_land_area_hectares: 250.00,
+                    total_available_area: 250.00
+                },
+                'bahi': {
+                    barangay_code: 'bahi',
+                    barangay_name: 'Bahi',
+                    max_land_area_hectares: 350.00,
+                    total_available_area: 350.00
+                },
+                'cambagang': {
+                    barangay_code: 'cambagang',
+                    barangay_name: 'Cambagang',
+                    max_land_area_hectares: 280.00,
+                    total_available_area: 280.00
+                },
+                'coronobe': {
+                    barangay_code: 'coronobe',
+                    barangay_name: 'Coronobe',
+                    max_land_area_hectares: 320.00,
+                    total_available_area: 320.00
+                },
+                'katipunan': {
+                    barangay_code: 'katipunan',
+                    barangay_name: 'Katipunan',
+                    max_land_area_hectares: 275.00,
+                    total_available_area: 275.00
+                },
+                'tupas': {
+                    barangay_code: 'tupas',
+                    barangay_name: 'Tupas',
+                    max_land_area_hectares: 320.00,
+                    total_available_area: 320.00
+                }
+            };
+            console.log('✅ Sample barangay limits created');
+        }
+
+        // Convert area to hectares for comparison
+        function convertToHectares(area, unit) {
+            if (!area || isNaN(area)) return 0;
+            if (unit === 'hectares') return parseFloat(area);
+            if (unit === 'sqm') return parseFloat(area) / 10000;
+            return parseFloat(area);
+        }
+
+        // Check if land area exceeds barangay limit
+        function checkLandAreaLimit() {
+            const barangaySelect = document.getElementById('barangay');
+            const landAreaInput = document.getElementById('landArea');
+            const areaUnitSelect = document.getElementById('areaUnit');
+            const areaWarning = document.getElementById('areaWarning');
+            const areaWarningText = document.getElementById('areaWarningText');
+            const areaLimitInfo = document.getElementById('areaLimitInfo');
+            const areaHint = document.getElementById('areaHint');
+            
+            if (!barangaySelect || !landAreaInput || !areaUnitSelect) return true;
+            
+            const selectedBarangay = barangaySelect.value;
+            const landAreaValue = landAreaInput.value.trim();
+            
+            // Reset warning
+            if (areaWarning) areaWarning.classList.add('hidden');
+            if (areaHint) {
+                areaHint.classList.remove('text-red-600', 'text-yellow-600');
+                areaHint.textContent = 'Enter the land area of your farm';
             }
             
-            if (!farmerData || !farmerData[0]) {
-                throw new Error('Farmer insertion succeeded but no data returned');
+            // Check if we have data and inputs are valid
+            if (!selectedBarangay || !landAreaValue || landAreaValue === '' || 
+                !barangayLimits[selectedBarangay] || isNaN(parseFloat(landAreaValue))) {
+                return true;
             }
             
-            const farmer = farmerData[0];
-            console.log('✅ Farmer inserted:', farmer.id);
+            const enteredArea = parseFloat(landAreaValue);
+            const unit = areaUnitSelect.value;
+            const areaInHectares = convertToHectares(enteredArea, unit);
             
-            // 3. Insert farm
-            console.log('🏡 Inserting farm...');
-            const farmData = {
-                ...formData.farm,
-                farmer_id: farmer.id
+            const barangayLimit = barangayLimits[selectedBarangay];
+            const maxArea = parseFloat(barangayLimit.max_land_area_hectares);
+            
+            // Check if exceeds limit
+            if (areaInHectares > maxArea) {
+                const barangayName = barangaySelect.options[barangaySelect.selectedIndex].text;
+                
+                if (areaWarning) {
+                    areaWarningText.textContent = `Warning: The entered area (${enteredArea} ${unit}) exceeds the total land area of ${barangayName} (${maxArea} hectares).`;
+                    areaLimitInfo.textContent = `Maximum allowed area for ${barangayName} is ${maxArea} hectares.`;
+                    areaWarning.classList.remove('hidden');
+                }
+                
+                if (areaHint) {
+                    areaHint.textContent = `⚠️ Area exceeds ${barangayName}'s total land area`;
+                    areaHint.classList.add('text-red-600');
+                }
+                
+                return false; // Exceeds limit
+            }
+            
+            // Check if close to limit (80% or more)
+            if (areaInHectares >= maxArea * 0.8) {
+                if (areaHint) {
+                    areaHint.textContent = `⚠️ Area is close to ${barangaySelect.options[barangaySelect.selectedIndex].text}'s limit (${maxArea} hectares)`;
+                    areaHint.classList.add('text-yellow-600');
+                }
+            } else {
+                if (areaHint) {
+                    const remaining = maxArea - areaInHectares;
+                    areaHint.textContent = `Remaining available area in this barangay: ${remaining.toFixed(2)} hectares`;
+                    areaHint.classList.remove('text-red-600', 'text-yellow-600');
+                }
+            }
+            
+            return true; // Within limit
+        }
+
+        // DEBUG: Check form elements exist
+        function debugFormElements() {
+            console.log('🔍 Checking form elements:');
+            const elements = ['fullName', 'email', 'barangay', 'landArea', 'areaUnit', 'ownershipType', 'terrainType'];
+            elements.forEach(id => {
+                const element = document.getElementById(id);
+                console.log(`${id}:`, element ? 'FOUND' : 'MISSING', element);
+            });
+        }
+
+        // UPDATED: File upload function with RLS fix
+        async function uploadIDPhoto(file) {
+            try {
+                console.log('📤 Uploading file...');
+                
+                const fileExt = file.name.split('.').pop();
+                const fileName = `submissions/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+                
+                // Try to upload to storage
+                const { data, error } = await window.supabaseClient.storage
+                    .from('verification-photos')
+                    .upload(fileName, file);
+                
+                if (error) {
+                    console.warn('⚠️ Storage upload failed, using base64 fallback:', error.message);
+                    
+                    // FALLBACK: Convert to base64 and return as data URL
+                    const base64Data = await fileToBase64(file);
+                    return {
+                        success: true,
+                        base64Data: base64Data,
+                        fileName: fileName,
+                        storageFailed: true
+                    };
+                }
+                
+                console.log('✅ File uploaded successfully:', fileName);
+                return {
+                    success: true,
+                    fileName: fileName,
+                    storageFailed: false
+                };
+                
+            } catch (error) {
+                console.error('❌ Upload failed:', error);
+                
+                // FALLBACK: Convert to base64 on error
+                try {
+                    const base64Data = await fileToBase64(file);
+                    return {
+                        success: true,
+                        base64Data: base64Data,
+                        fileName: file.name,
+                        storageFailed: true
+                    };
+                } catch (fallbackError) {
+                    throw new Error('Upload failed and fallback also failed: ' + error.message);
+                }
+            }
+        }
+
+        // Helper function to convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Collect all form data
+        function collectFormData() {
+            // DEBUG: Check elements first
+            debugFormElements();
+            
+            const formData = {
+                farmer: {
+                    full_name: document.getElementById('fullName').value,
+                    email: document.getElementById('email').value,
+                    barangay: document.getElementById('barangay').value
+                },
+                farm: {
+                    land_area: parseFloat(document.getElementById('landArea').value),
+                    area_unit: document.getElementById('areaUnit').value,
+                    ownership_type: document.getElementById('ownershipType').value || null,
+                    terrain_type: document.getElementById('terrainType').value || null,
+                    farm_status: 'pending'
+                },
+                crops: []
             };
             
-            const { data: farmDataResult, error: farmError } = await window.supabaseClient
-                .from('farms')
-                .insert([farmData])
-                .select();
+            // Collect crop data
+            const cropSections = document.querySelectorAll('.crop-section');
+            cropSections.forEach(section => {
+                const cropData = {
+                    crop_type: section.querySelector('select[name="cropType[]"]').value,
+                    area_planted: parseFloat(section.querySelector('input[name="areaPlanted[]"]').value),
+                    planted_area_unit: section.querySelector('select[name="plantedAreaUnit[]"]').value,
+                    date_planted: section.querySelector('input[name="datePlanted[]"]').value,
+                    expected_harvest_date: section.querySelector('input[name="harvestDate[]"]').value,
+                    harvest_yield: section.querySelector('input[name="harvestYield[]"]').value ? 
+                                  parseFloat(section.querySelector('input[name="harvestYield[]"]').value) : null,
+                    yield_unit: section.querySelector('select[name="yieldUnit[]"]').value || null
+                };
+                formData.crops.push(cropData);
+            });
+            
+            return formData;
+        }
+
+        // Database validation for barangay area
+        async function validateBarangayAreaInDatabase(barangayCode, areaInHectares) {
+            try {
+                const { data, error } = await window.supabaseClient
+                    .from('barangay_limits')
+                    .select('max_land_area_hectares, barangay_name')
+                    .eq('barangay_code', barangayCode)
+                    .single();
                 
-            if (farmError) {
-                console.error('❌ Farm insertion error:', farmError);
-                throw new Error('Farm insertion failed: ' + farmError.message);
+                if (error) {
+                    console.warn('⚠️ Could not validate against database:', error.message);
+                    return true; // Allow submission if database validation fails
+                }
+                
+                if (areaInHectares > parseFloat(data.max_land_area_hectares)) {
+                    throw new Error(`Area exceeds maximum allowed for ${data.barangay_name}`);
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Database validation failed:', error);
+                throw error;
             }
-            if (!farmDataResult || !farmDataResult[0]) throw new Error('No farm data returned');
-            
-            const farm = farmDataResult[0];
-            console.log('✅ Farm inserted:', farm.id);
-            
-            // 4. Insert crops
-            console.log('🌱 Inserting crops...');
-            const cropsWithFarmId = formData.crops.map(crop => ({
-                ...crop,
-                farm_id: farm.id
-            }));
-            
-            if (cropsWithFarmId.length > 0) {
-                const { data: cropsData, error: cropsError } = await window.supabaseClient
-                    .from('crops')
-                    .insert(cropsWithFarmId)
+        }
+
+        // CORRECTED SUBMISSION FUNCTION - UPDATED FOR BASE64 FALLBACK
+        async function submitToSupabase(formData, idPhotoResult) {
+            try {
+                console.log('🚀 Starting database submission...');
+                
+                // 1. Validate land area against barangay limit
+                const areaInHectares = formData.farm.area_unit === 'hectares' 
+                    ? formData.farm.land_area 
+                    : formData.farm.land_area / 10000;
+                
+                await validateBarangayAreaInDatabase(formData.farmer.barangay, areaInHectares);
+                
+                // 2. Test connection first
+                console.log('🔍 Testing database connection...');
+                const { error: testError } = await window.supabaseClient
+                    .from('farmers')
+                    .select('count')
+                    .limit(1);
+                    
+                if (testError) {
+                    console.warn('⚠️ Initial connection test failed, but continuing:', testError.message);
+                } else {
+                    console.log('✅ Database connection OK');
+                }
+                
+                // 3. Insert farmer - SIMPLIFIED APPROACH
+                console.log('👨‍🌾 Inserting farmer:', formData.farmer);
+                
+                // FIX: Use simple insert without complex parameters
+                const { data: farmerData, error: farmerError } = await window.supabaseClient
+                    .from('farmers')
+                    .insert([
+                        {
+                            full_name: formData.farmer.full_name,
+                            email: formData.farmer.email,
+                            barangay: formData.farmer.barangay
+                        }
+                    ])
                     .select();
                 
-                if (cropsError) {
-                    console.warn('⚠️ Crops insertion failed:', cropsError);
-                } else {
-                    console.log('✅ Crops inserted successfully:', cropsData);
+                if (farmerError) {
+                    console.error('❌ Farmer insertion error:', farmerError);
+                    
+                    // SPECIAL HANDLING FOR BARANGAY COLUMN ISSUE
+                    if (farmerError.message.includes('barangay') && farmerError.message.includes('schema cache')) {
+                        throw new Error('Database configuration issue. Please contact administrator to fix the barangay column.');
+                    }
+                    
+                    throw new Error('Farmer insertion failed: ' + farmerError.message);
                 }
-            }
-            
-            // 5. Insert verification - UPDATED FOR BASE64 FALLBACK
-            if (idPhotoResult && idPhotoResult.success) {
-                console.log('📸 Inserting verification...');
                 
-                const verificationData = {
-                    farmer_id: farmer.id,
-                    verification_status: 'pending'
+                if (!farmerData || !farmerData[0]) {
+                    throw new Error('Farmer insertion succeeded but no data returned');
+                }
+                
+                const farmer = farmerData[0];
+                console.log('✅ Farmer inserted:', farmer.id);
+                
+                // 4. Insert farm
+                console.log('🏡 Inserting farm...');
+                const farmData = {
+                    ...formData.farm,
+                    farmer_id: farmer.id
                 };
                 
-                // Add photo data based on upload method
-                if (idPhotoResult.storageFailed && idPhotoResult.base64Data) {
-                    // Store base64 data directly in database
-                    verificationData.id_photo_base64 = idPhotoResult.base64Data;
-                    verificationData.id_photo_path = null;
-                    console.log('📸 Using base64 photo storage');
-                } else {
-                    // Store file path from storage
-                    verificationData.id_photo_path = idPhotoResult.fileName;
-                    verificationData.id_photo_base64 = null;
-                    console.log('📸 Using storage photo path');
+                const { data: farmDataResult, error: farmError } = await window.supabaseClient
+                    .from('farms')
+                    .insert([farmData])
+                    .select();
+                    
+                if (farmError) {
+                    console.error('❌ Farm insertion error:', farmError);
+                    throw new Error('Farm insertion failed: ' + farmError.message);
+                }
+                if (!farmDataResult || !farmDataResult[0]) throw new Error('No farm data returned');
+                
+                const farm = farmDataResult[0];
+                console.log('✅ Farm inserted:', farm.id);
+                
+                // 5. Insert crops
+                console.log('🌱 Inserting crops...');
+                const cropsWithFarmId = formData.crops.map(crop => ({
+                    ...crop,
+                    farm_id: farm.id
+                }));
+                
+                if (cropsWithFarmId.length > 0) {
+                    const { data: cropsData, error: cropsError } = await window.supabaseClient
+                        .from('crops')
+                        .insert(cropsWithFarmId)
+                        .select();
+                    
+                    if (cropsError) {
+                        console.warn('⚠️ Crops insertion failed:', cropsError);
+                    } else {
+                        console.log('✅ Crops inserted successfully:', cropsData);
+                    }
                 }
                 
-                const { error: verificationError } = await window.supabaseClient
-                    .from('identity_verifications')
-                    .insert([verificationData]);
+                // 6. Insert verification - UPDATED FOR BASE64 FALLBACK
+                if (idPhotoResult && idPhotoResult.success) {
+                    console.log('📸 Inserting verification...');
+                    
+                    const verificationData = {
+                        farmer_id: farmer.id,
+                        verification_status: 'pending'
+                    };
+                    
+                    // Add photo data based on upload method
+                    if (idPhotoResult.storageFailed && idPhotoResult.base64Data) {
+                        // Store base64 data directly in database
+                        verificationData.id_photo_path = null;
+                        console.log('📸 Using base64 photo storage');
+                    } else {
+                        // Store file path from storage
+                        verificationData.id_photo_path = idPhotoResult.fileName;
+                        console.log('📸 Using storage photo path');
+                    }
+
+                    // TEMPORARY FIX - Force a value for id_photo_path
+if (!verificationData.id_photo_path) {
+    verificationData.id_photo_path = 'pending_verification';
+}
+                    
+                    const { error: verificationError } = await window.supabaseClient
+                        .from('identity_verifications')
+                        .insert([verificationData]);
+                    
+                    if (verificationError) {
+                        console.warn('⚠️ Verification insertion failed:', verificationError);
+                    } else {
+                        console.log('✅ Verification inserted successfully');
+                    }
+                }
                 
-                if (verificationError) {
-                    console.warn('⚠️ Verification insertion failed:', verificationError);
-                } else {
-                    console.log('✅ Verification inserted successfully');
+                console.log('🎉 All operations completed!');
+                return { success: true, farmer_id: farmer.id, farm_id: farm.id };
+                
+            } catch (error) {
+                console.error('❌ Submission failed:', error);
+                
+                // Provide more user-friendly error messages
+                if (error.message.includes('barangay') && error.message.includes('schema cache')) {
+                    throw new Error('System configuration error. Please contact support to fix the database setup.');
+                }
+                
+                throw error;
+            }
+        }
+
+        // Progress tracking
+        function updateProgress(percentage, message) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            if (progressBar) progressBar.classList.remove('hidden');
+            if (progressFill) progressFill.style.width = percentage + '%';
+            if (progressText) progressText.textContent = message;
+        }
+
+        function hideProgress() {
+            const progressBar = document.getElementById('progressBar');
+            if (progressBar) progressBar.classList.add('hidden');
+        }
+
+        // Validate required fields
+        function validateRequiredFields() {
+            const requiredFields = [
+                document.getElementById('fullName'),
+                document.getElementById('email'),
+                document.getElementById('barangay'),
+                document.getElementById('landArea')
+            ];
+            
+            for (let field of requiredFields) {
+                if (!field.value.trim()) {
+                    field.focus();
+                    return false;
                 }
             }
             
-            console.log('🎉 All operations completed!');
-            return { success: true, farmer_id: farmer.id, farm_id: farm.id };
-            
-        } catch (error) {
-            console.error('❌ Submission failed:', error);
-            
-            // Provide more user-friendly error messages
-            if (error.message.includes('barangay') && error.message.includes('schema cache')) {
-                throw new Error('System configuration error. Please contact support to fix the database setup.');
-            }
-            
-            throw error;
-        }
-    }
-
-    // Progress tracking
-    function updateProgress(percentage, message) {
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        
-        if (progressBar) progressBar.classList.remove('hidden');
-        if (progressFill) progressFill.style.width = percentage + '%';
-        if (progressText) progressText.textContent = message;
-    }
-
-    function hideProgress() {
-        const progressBar = document.getElementById('progressBar');
-        if (progressBar) progressBar.classList.add('hidden');
-    }
-
-    // Validate required fields
-    function validateRequiredFields() {
-        const requiredFields = [
-            document.getElementById('fullName'),
-            document.getElementById('email'),
-            document.getElementById('barangay'),
-            document.getElementById('landArea')
-        ];
-        
-        for (let field of requiredFields) {
-            if (!field.value.trim()) {
-                field.focus();
+            // ADD LAND AREA LIMIT CHECK
+            if (!checkLandAreaLimit()) {
+                // Show error and prevent submission if area exceeds limit
+                const barangaySelect = document.getElementById('barangay');
+                const barangayName = barangaySelect.options[barangaySelect.selectedIndex].text;
+                const landArea = document.getElementById('landArea').value;
+                const areaUnit = document.getElementById('areaUnit').value;
+                
+                showAlert('error', `Land area (${landArea} ${areaUnit}) exceeds the maximum allowed for ${barangayName}. Please adjust your entry.`);
+                document.getElementById('landArea').focus();
                 return false;
             }
-        }
-        
-        const cropSections = document.querySelectorAll('.crop-section');
-        for (let section of cropSections) {
-            const cropType = section.querySelector('select[name="cropType[]"]');
-            const areaPlanted = section.querySelector('input[name="areaPlanted[]"]');
-            const datePlanted = section.querySelector('input[name="datePlanted[]"]');
-            const harvestDate = section.querySelector('input[name="harvestDate[]"]');
             
-            if (!cropType.value || !areaPlanted.value || !datePlanted.value || !harvestDate.value) {
-                cropType.focus();
-                return false;
+            const cropSections = document.querySelectorAll('.crop-section');
+            for (let section of cropSections) {
+                const cropType = section.querySelector('select[name="cropType[]"]');
+                const areaPlanted = section.querySelector('input[name="areaPlanted[]"]');
+                const datePlanted = section.querySelector('input[name="datePlanted[]"]');
+                const harvestDate = section.querySelector('input[name="harvestDate[]"]');
+                
+                if (!cropType.value || !areaPlanted.value || !datePlanted.value || !harvestDate.value) {
+                    cropType.focus();
+                    return false;
+                }
             }
-        }
-        
-        return true;
-    }
-
-    // Global variables
-    let cropCounter = 1;
-    let currentFile = null;
-
-    // Function to add new crop section
-    function addCropSection() {
-        console.log("Add Crop button clicked!");
-        
-        const cropSections = document.getElementById('cropSections');
-        if (!cropSections) {
-            console.error("Crop sections container not found!");
-            return;
-        }
-        
-        const newCropSection = document.createElement('div');
-        newCropSection.className = 'crop-section';
-        newCropSection.setAttribute('data-crop-index', cropCounter);
-        
-        newCropSection.innerHTML = `
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="font-medium text-gray-700">Crop #${cropCounter + 1}</h3>
-                <button type="button" class="remove-crop-btn bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-colors">
-                    <i class="ri-close-line text-sm"></i>
-                </button>
-            </div>
             
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Crop <span class="text-red-500">*</span></label>
-                <div class="relative">
-                    <select name="cropType[]" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8" required>
-                        <option value="" disabled selected>Select Crop </option>
-                        <optgroup label="Vegetables">
-                            <option value="pechay">Pechay</option>
-                            <option value="chinese_cabbage">Chinese Cabbage</option>
-                            <option value="lettuce">Lettuce</option>
-                            <option value="carrots">Carrots</option>
-                            <option value="bell_pepper">Bell Pepper</option>
-                            <option value="chili_pepper">Chili Pepper</option>
-                            <option value="string_beans">String Beans</option>
-                            <option value="okra">Okra</option>
-                            <option value="eggplant">Eggplant</option>
-                            <option value="ampalaya">Ampalaya (Bitter Melon)</option>
-                            <option value="squash">Squash</option>
-                            <option value="cucumber">Cucumber</option>
-                            <option value="tomato">Tomato</option>
-                            <option value="sweet_potato">Sweet Potato (Camote)</option>
-                            <option value="gabi">Gabi (Taro)</option>
-                            <option value="kangkong">Kangkong (Water Spinach)</option>
-                        </optgroup>
-                        <optgroup label="Fruits">
-                            <option value="banana_saba">Banana (Saba)</option>
-                            <option value="banana_lakatan">Banana (Lakatan)</option>
-                            <option value="papaya">Papaya</option>
-                            <option value="pineapple">Pineapple</option>
-                            <option value="mango">Mango</option>
-                            <option value="calamansi">Calamansi</option>
-                            <option value="coconut">Coconut</option>
-                            <option value="durian">Durian</option>
-                            <option value="rambutan">Rambutan</option>
-                            <option value="lanzones">Lanzones</option>
-                            <option value="jackfruit">Jackfruit</option>
-                        </optgroup>
-                        <optgroup label="Staples">
-                            <option value="rice">Rice (Palay)</option>
-                            <option value="corn">Corn (Maize)</option>
-                            <option value="cassava">Cassava</option>
-                        </optgroup>
-                        <optgroup label="Other Crops">
-                            <option value="coffee">Coffee</option>
-                            <option value="cacao">Cacao</option>
-                            <option value="abaca">Abaca</option>
-                        </optgroup>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                        <i class="ri-arrow-down-s-line text-gray-400"></i>
-                    </div>
+            return true;
+        }
+
+        // Global variables
+        let cropCounter = 1;
+        let currentFile = null;
+
+        // Function to add new crop section
+        function addCropSection() {
+            console.log("Add Crop button clicked!");
+            
+            const cropSections = document.getElementById('cropSections');
+            if (!cropSections) {
+                console.error("Crop sections container not found!");
+                return;
+            }
+            
+            const newCropSection = document.createElement('div');
+            newCropSection.className = 'crop-section';
+            newCropSection.setAttribute('data-crop-index', cropCounter);
+            
+            newCropSection.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-medium text-gray-700">Crop #${cropCounter + 1}</h3>
+                    <button type="button" class="remove-crop-btn bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition-colors">
+                        <i class="ri-close-line text-sm"></i>
+                    </button>
                 </div>
-            </div>
-
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-1">Area Planted <span class="text-red-500">*</span></label>
-                <div class="flex">
-                    <input type="number" name="areaPlanted[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter planted area" required>
-                    <div class="relative unit-select-wrapper">
-                        <select name="plantedAreaUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
-                            <option value="hectares" selected>Hectares</option>
-                            <option value="sqm">Square Meters</option>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Crop <span class="text-red-500">*</span></label>
+                    <div class="relative">
+                        <select name="cropType[]" class="w-full appearance-none px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8" required>
+                            <option value="" disabled selected>Select Crop </option>
+                            <optgroup label="Vegetables">
+                                <option value="pechay">Pechay</option>
+                                <option value="chinese_cabbage">Chinese Cabbage</option>
+                                <option value="lettuce">Lettuce</option>
+                                <option value="carrots">Carrots</option>
+                                <option value="bell_pepper">Bell Pepper</option>
+                                <option value="chili_pepper">Chili Pepper</option>
+                                <option value="string_beans">String Beans</option>
+                                <option value="okra">Okra</option>
+                                <option value="eggplant">Eggplant</option>
+                                <option value="ampalaya">Ampalaya (Bitter Melon)</option>
+                                <option value="squash">Squash</option>
+                                <option value="cucumber">Cucumber</option>
+                                <option value="tomato">Tomato</option>
+                                <option value="sweet_potato">Sweet Potato (Camote)</option>
+                                <option value="gabi">Gabi (Taro)</option>
+                                <option value="kangkong">Kangkong (Water Spinach)</option>
+                            </optgroup>
+                            <optgroup label="Fruits">
+                                <option value="banana_saba">Banana (Saba)</option>
+                                <option value="banana_lakatan">Banana (Lakatan)</option>
+                                <option value="papaya">Papaya</option>
+                                <option value="pineapple">Pineapple</option>
+                                <option value="mango">Mango</option>
+                                <option value="calamansi">Calamansi</option>
+                                <option value="coconut">Coconut</option>
+                                <option value="durian">Durian</option>
+                                <option value="rambutan">Rambutan</option>
+                                <option value="lanzones">Lanzones</option>
+                                <option value="jackfruit">Jackfruit</option>
+                            </optgroup>
+                            <optgroup label="Staples">
+                                <option value="rice">Rice (Palay)</option>
+                                <option value="corn">Corn (Maize)</option>
+                                <option value="cassava">Cassava</option>
+                            </optgroup>
+                            <optgroup label="Other Crops">
+                                <option value="coffee">Coffee</option>
+                                <option value="cacao">Cacao</option>
+                                <option value="abaca">Abaca</option>
+                            </optgroup>
                         </select>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                             <i class="ri-arrow-down-s-line text-gray-400"></i>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date Planted <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <input type="date" name="datePlanted[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                            <i class="ri-calendar-line text-gray-400"></i>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Expected Harvest Date <span class="text-red-500">*</span></label>
-                    <div class="relative">
-                        <input type="date" name="harvestDate[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                            <i class="ri-calendar-line text-gray-400"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Post Production Harvest Section -->
-            <div class="mt-4 pt-4 border-t border-gray-200">
-                <h4 class="text-md font-medium text-gray-700 mb-3">Post Production Harvest (Optional)</h4>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Harvest Yield</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Area Planted <span class="text-red-500">*</span></label>
                     <div class="flex">
-                        <input type="number" name="harvestYield[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter yield">
+                        <input type="number" name="areaPlanted[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter planted area" required>
                         <div class="relative unit-select-wrapper">
-                            <select name="yieldUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
-                                <option value="kg" selected>Kilograms</option>
-                                <option value="tons">Tons</option>
+                            <select name="plantedAreaUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                <option value="hectares" selected>Hectares</option>
+                                <option value="sqm">Square Meters</option>
                             </select>
                             <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <i class="ri-arrow-down-s-line text-gray-400"></i>
@@ -963,305 +1164,387 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
-        
-        cropSections.appendChild(newCropSection);
-        
-        const removeBtn = newCropSection.querySelector('.remove-crop-btn');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', function() {
-                removeCropSection(this);
-            });
-        }
-        
-        cropCounter++;
-        updateRemoveButtons();
-        newCropSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Function to remove crop section
-    function removeCropSection(button) {
-        const cropSection = button.closest('.crop-section');
-        if (cropSection) {
-            cropSection.remove();
-            updateRemoveButtons();
-        }
-    }
-
-    // Function to update remove button states
-    function updateRemoveButtons() {
-        const cropSections = document.querySelectorAll('.crop-section');
-        const removeButtons = document.querySelectorAll('.remove-crop-btn');
-        
-        if (cropSections.length === 1) {
-            removeButtons[0].disabled = true;
-            removeButtons[0].classList.add('opacity-50', 'cursor-not-allowed');
-            removeButtons[0].classList.remove('hover:bg-red-600');
-        } else {
-            removeButtons.forEach(btn => {
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                btn.classList.add('hover:bg-red-600');
-            });
-        }
-        
-        cropSections.forEach((section, index) => {
-            const title = section.querySelector('h3');
-            if (title) title.textContent = `Crop #${index + 1}`;
-        });
-    }
-
-    // Email validation function
-    function validateGmail(email) {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
-        return emailRegex.test(email);
-    }
-
-    // Process the selected file
-    function handleFile(file) {
-        const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-        if (!validTypes.includes(file.type)) {
-            showUploadError('Please select a JPG, PNG, or WebP image.');
-            return;
-        }
-        
-        if (file.size > 5 * 1024 * 1024) {
-            showUploadError('Image must be less than 5MB.');
-            return;
-        }
-        
-        hideUploadError();
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const previewImage = document.getElementById('previewImage');
-            const previewContainer = document.getElementById('previewContainer');
-            const uploadStatus = document.getElementById('uploadStatus');
-            
-            if (previewImage) previewImage.src = e.target.result;
-            if (previewContainer) previewContainer.classList.remove('hidden');
-            if (uploadStatus) {
-                uploadStatus.innerHTML = `
-                    <div class="flex items-center text-blue-600">
-                        <i class="ri-information-line mr-2"></i>
-                        <span>Photo ready for upload</span>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date Planted <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <input type="date" name="datePlanted[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="ri-calendar-line text-gray-400"></i>
+                            </div>
+                        </div>
                     </div>
-                `;
-                uploadStatus.classList.remove('hidden');
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Expected Harvest Date <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <input type="date" name="harvestDate[]" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" required>
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="ri-calendar-line text-gray-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Post Production Harvest Section -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <h4 class="text-md font-medium text-gray-700 mb-3">Post Production Harvest (Optional)</h4>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Harvest Yield</label>
+                        <div class="flex">
+                            <input type="number" name="harvestYield[]" min="0" step="0.01" class="flex-1 px-0.1 py 0.9 border border-gray-300 rounded-l number-input focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="Enter yield">
+                            <div class="relative unit-select-wrapper">
+                                <select name="yieldUnit[]" class="w-full h-full px-3 py-2 border border-gray-300 unit-select focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm pr-8 appearance-none">
+                                    <option value="kg" selected>Kilograms</option>
+                                    <option value="tons">Tons</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                    <i class="ri-arrow-down-s-line text-gray-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            cropSections.appendChild(newCropSection);
+            
+            const removeBtn = newCropSection.querySelector('.remove-crop-btn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    removeCropSection(this);
+                });
+            }
+            
+            cropCounter++;
+            updateRemoveButtons();
+            newCropSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Function to remove crop section
+        function removeCropSection(button) {
+            const cropSection = button.closest('.crop-section');
+            if (cropSection) {
+                cropSection.remove();
+                updateRemoveButtons();
             }
         }
-        reader.onerror = function() {
-            showUploadError('Error reading the file.');
-        }
-        reader.readAsDataURL(file);
-        
-        currentFile = file;
-    }
 
-    function showUploadError(message) {
-        const uploadError = document.getElementById('uploadError');
-        if (uploadError) {
-            uploadError.textContent = message;
-            uploadError.classList.remove('hidden');
-        }
-    }
-
-    function hideUploadError() {
-        const uploadError = document.getElementById('uploadError');
-        if (uploadError) uploadError.classList.add('hidden');
-    }
-
-    function showAlert(type, message) {
-        const box = type === 'error' ? document.getElementById('formError') : document.getElementById('formSuccess');
-        if (box) {
-            box.textContent = message;
-            box.classList.remove('hidden');
-            setTimeout(() => box.classList.add('hidden'), 4000);
-        }
-    }
-
-    // Initialize the application
-    function initApp() {
-        console.log("Initializing AgriTrack application...");
-        
-        const addCropBtn = document.getElementById('addCropBtn');
-        const form = document.getElementById('farmDataForm');
-        const successModal = document.getElementById('successModal');
-        const closeModal = document.getElementById('closeModal');
-        const emailInput = document.getElementById('email');
-        const emailWarning = document.getElementById('emailWarning');
-        
-        // Photo upload elements
-        const cameraInput = document.getElementById('cameraInput');
-        const galleryInput = document.getElementById('galleryInput');
-        const removeImageBtn = document.getElementById('removeImage');
-        
-        // Add crop button event listener
-        if (addCropBtn) {
-            addCropBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                addCropSection();
+        // Function to update remove button states
+        function updateRemoveButtons() {
+            const cropSections = document.querySelectorAll('.crop-section');
+            const removeButtons = document.querySelectorAll('.remove-crop-btn');
+            
+            if (cropSections.length === 1) {
+                removeButtons[0].disabled = true;
+                removeButtons[0].classList.add('opacity-50', 'cursor-not-allowed');
+                removeButtons[0].classList.remove('hover:bg-red-600');
+            } else {
+                removeButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    btn.classList.add('hover:bg-red-600');
+                });
+            }
+            
+            cropSections.forEach((section, index) => {
+                const title = section.querySelector('h3');
+                if (title) title.textContent = `Crop #${index + 1}`;
             });
         }
-        
-        // Email validation
-        if (emailInput) {
-            emailInput.addEventListener('blur', function() {
-                if (this.value && !validateGmail(this.value)) {
-                    if (emailWarning) emailWarning.style.display = 'block';
-                } else {
-                    if (emailWarning) emailWarning.style.display = 'none';
-                }
-            });
+
+        // Email validation function
+        function validateGmail(email) {
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+            return emailRegex.test(email);
         }
-        
-        // File inputs
-        function setupFileInput(fileInput) {
-            if (fileInput) {
-                fileInput.addEventListener('change', function() {
-                    if (this.files && this.files[0]) {
-                        handleFile(this.files[0]);
-                        currentFile = this.files[0];
-                    }
+
+        // Setup real-time validation for land area
+        function setupRealTimeValidation() {
+            const landAreaInput = document.getElementById('landArea');
+            const barangaySelect = document.getElementById('barangay');
+            const areaUnitSelect = document.getElementById('areaUnit');
+            
+            // Check area when input changes
+            if (landAreaInput) {
+                landAreaInput.addEventListener('input', function() {
+                    checkLandAreaLimit();
+                });
+            }
+            
+            // Check area when barangay changes
+            if (barangaySelect) {
+                barangaySelect.addEventListener('change', function() {
+                    checkLandAreaLimit();
+                });
+            }
+            
+            // Check area when unit changes
+            if (areaUnitSelect) {
+                areaUnitSelect.addEventListener('change', function() {
+                    checkLandAreaLimit();
                 });
             }
         }
-        
-        setupFileInput(cameraInput);
-        setupFileInput(galleryInput);
 
-        // Remove image
-        if (removeImageBtn) {
-            removeImageBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (cameraInput) cameraInput.value = '';
-                if (galleryInput) galleryInput.value = '';
-                currentFile = null;
-                
+        // Process the selected file
+        function handleFile(file) {
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+            if (!validTypes.includes(file.type)) {
+                showUploadError('Please select a JPG, PNG, or WebP image.');
+                return;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                showUploadError('Image must be less than 5MB.');
+                return;
+            }
+            
+            hideUploadError();
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImage = document.getElementById('previewImage');
                 const previewContainer = document.getElementById('previewContainer');
                 const uploadStatus = document.getElementById('uploadStatus');
                 
-                if (previewContainer) previewContainer.classList.add('hidden');
-                if (uploadStatus) uploadStatus.classList.add('hidden');
-                hideUploadError();
-            });
+                if (previewImage) previewImage.src = e.target.result;
+                if (previewContainer) previewContainer.classList.remove('hidden');
+                if (uploadStatus) {
+                    uploadStatus.innerHTML = `
+                        <div class="flex items-center text-blue-600">
+                            <i class="ri-information-line mr-2"></i>
+                            <span>Photo ready for upload</span>
+                        </div>
+                    `;
+                    uploadStatus.classList.remove('hidden');
+                }
+            }
+            reader.onerror = function() {
+                showUploadError('Error reading the file.');
+            }
+            reader.readAsDataURL(file);
+            
+            currentFile = file;
         }
-        
-        // UPDATED Form submission handler with base64 fallback
-        if (form) {
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                const submitButton = document.getElementById('submitButton');
-                if (submitButton) {
-                    const originalText = submitButton.textContent;
-                    submitButton.innerHTML = '<div class="loading-spinner"></div> Submitting...';
-                    submitButton.disabled = true;
-                    
-                    try {
-                        updateProgress(10, 'Validating form data...');
-                        
-                        if (!validateRequiredFields()) {
-                            throw new Error('Please fill out all required fields');
-                        }
-                        
-                        updateProgress(20, 'Collecting form data...');
-                        const formData = collectFormData();
-                        
-                        updateProgress(30, 'Processing ID photo...');
-                        let idPhotoResult = null;
-                        if (currentFile) {
-                            idPhotoResult = await uploadIDPhoto(currentFile);
-                            if (idPhotoResult.storageFailed) {
-                                console.log('ℹ️ Using base64 fallback for photo storage');
-                            }
-                        }
-                        
-                        updateProgress(60, 'Saving to database...');
-                        const result = await submitToSupabase(formData, idPhotoResult);
-                        
-                        updateProgress(100, 'Submission complete!');
-                        
-                        if (successModal) {
-                            successModal.classList.remove('hidden');
-                            const successMessage = successModal.querySelector('p');
-                            if (successMessage) {
-                                successMessage.textContent = 'Your farm data has been submitted successfully! It is now pending admin approval.';
-                            }
-                        }
-                        
-                        console.log('🎉 Form submitted successfully!');
-                        
-                    } catch (error) {
-                        console.error('❌ Submission error:', error);
-                        showAlert('error', error.message || 'Submission failed. Please try again.');
-                    } finally {
-                        submitButton.innerHTML = originalText;
-                        submitButton.disabled = false;
-                        setTimeout(hideProgress, 2000);
+
+        function showUploadError(message) {
+            const uploadError = document.getElementById('uploadError');
+            if (uploadError) {
+                uploadError.textContent = message;
+                uploadError.classList.remove('hidden');
+            }
+        }
+
+        function hideUploadError() {
+            const uploadError = document.getElementById('uploadError');
+            if (uploadError) uploadError.classList.add('hidden');
+        }
+
+        function showAlert(type, message) {
+            const box = type === 'error' ? document.getElementById('formError') : document.getElementById('formSuccess');
+            if (box) {
+                box.textContent = message;
+                box.classList.remove('hidden');
+                setTimeout(() => box.classList.add('hidden'), 4000);
+            }
+        }
+
+        // Initialize the application
+        function initApp() {
+            console.log("Initializing AgriTrack application...");
+            
+            // Fetch barangay limits when app starts
+            fetchBarangayLimits();
+            
+            const addCropBtn = document.getElementById('addCropBtn');
+            const form = document.getElementById('farmDataForm');
+            const successModal = document.getElementById('successModal');
+            const closeModal = document.getElementById('closeModal');
+            const emailInput = document.getElementById('email');
+            const emailWarning = document.getElementById('emailWarning');
+            
+            // Photo upload elements
+            const cameraInput = document.getElementById('cameraInput');
+            const galleryInput = document.getElementById('galleryInput');
+            const removeImageBtn = document.getElementById('removeImage');
+            
+            // Add crop button event listener
+            if (addCropBtn) {
+                addCropBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    addCropSection();
+                });
+            }
+            
+            // Email validation
+            if (emailInput) {
+                emailInput.addEventListener('blur', function() {
+                    if (this.value && !validateGmail(this.value)) {
+                        if (emailWarning) emailWarning.style.display = 'block';
+                    } else {
+                        if (emailWarning) emailWarning.style.display = 'none';
                     }
+                });
+            }
+            
+            // File inputs
+            function setupFileInput(fileInput) {
+                if (fileInput) {
+                    fileInput.addEventListener('change', function() {
+                        if (this.files && this.files[0]) {
+                            handleFile(this.files[0]);
+                            currentFile = this.files[0];
+                        }
+                    });
                 }
-            });
-        }
-        
-        // Close modal
-        if (closeModal) {
-            closeModal.addEventListener('click', function() {
-                if (successModal) successModal.classList.add('hidden');
-                if (form) form.reset();
-                
-                if (cameraInput) cameraInput.value = '';
-                if (galleryInput) galleryInput.value = '';
-                currentFile = null;
-                
-                const previewContainer = document.getElementById('previewContainer');
-                const uploadStatus = document.getElementById('uploadStatus');
-                
-                if (previewContainer) previewContainer.classList.add('hidden');
-                if (uploadStatus) uploadStatus.classList.add('hidden');
-                
-                const cropSections = document.getElementById('cropSections');
-                if (cropSections && cropSections.children.length > 0) {
-                    const firstCrop = cropSections.children[0];
-                    cropSections.innerHTML = '';
-                    cropSections.appendChild(firstCrop);
-                    cropCounter = 1;
-                    updateRemoveButtons();
-                }
-                
-                hideProgress();
-            });
-        }
-        
-        // Set default dates
-        const today = new Date().toISOString().split('T')[0];
-        const dateInputs = document.querySelectorAll('input[name="datePlanted[]"]');
-        if (dateInputs.length > 0) dateInputs[0].value = today;
-        
-        const harvestDate = new Date();
-        harvestDate.setDate(harvestDate.getDate() + 90);
-        const harvestInputs = document.querySelectorAll('input[name="harvestDate[]"]');
-        if (harvestInputs.length > 0) harvestInputs[0].value = harvestDate.toISOString().split('T')[0];
-        
-        updateRemoveButtons();
-        console.log("AgriTrack application initialized successfully!");
-    }
+            }
+            
+            setupFileInput(cameraInput);
+            setupFileInput(galleryInput);
 
-    // Initialize when DOM is fully loaded
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM fully loaded, initializing app...");
-        initApp();
-    });
+            // Remove image
+            if (removeImageBtn) {
+                removeImageBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (cameraInput) cameraInput.value = '';
+                    if (galleryInput) galleryInput.value = '';
+                    currentFile = null;
+                    
+                    const previewContainer = document.getElementById('previewContainer');
+                    const uploadStatus = document.getElementById('uploadStatus');
+                    
+                    if (previewContainer) previewContainer.classList.add('hidden');
+                    if (uploadStatus) uploadStatus.classList.add('hidden');
+                    hideUploadError();
+                });
+            }
+            
+            // Setup real-time validation for land area
+            setupRealTimeValidation();
+            
+            // UPDATED Form submission handler with base64 fallback
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = document.getElementById('submitButton');
+                    if (submitButton) {
+                        const originalText = submitButton.textContent;
+                        submitButton.innerHTML = '<div class="loading-spinner"></div> Submitting...';
+                        submitButton.disabled = true;
+                        
+                        try {
+                            updateProgress(10, 'Validating form data...');
+                            
+                            if (!validateRequiredFields()) {
+                                throw new Error('Please fill out all required fields');
+                            }
+                            
+                            updateProgress(20, 'Collecting form data...');
+                            const formData = collectFormData();
+                            
+                            updateProgress(30, 'Processing ID photo...');
+                            let idPhotoResult = null;
+                            if (currentFile) {
+                                idPhotoResult = await uploadIDPhoto(currentFile);
+                                if (idPhotoResult.storageFailed) {
+                                    console.log('ℹ️ Using base64 fallback for photo storage');
+                                }
+                            }
+                            
+                            updateProgress(60, 'Saving to database...');
+                            const result = await submitToSupabase(formData, idPhotoResult);
+                            
+                            updateProgress(100, 'Submission complete!');
+                            
+                            if (successModal) {
+                                successModal.classList.remove('hidden');
+                                const successMessage = successModal.querySelector('p');
+                                if (successMessage) {
+                                    successMessage.textContent = 'Your farm data has been submitted successfully! It is now pending admin approval.';
+                                }
+                            }
+                            
+                            console.log('🎉 Form submitted successfully!');
+                            
+                        } catch (error) {
+                            console.error('❌ Submission error:', error);
+                            showAlert('error', error.message || 'Submission failed. Please try again.');
+                        } finally {
+                            submitButton.innerHTML = originalText;
+                            submitButton.disabled = false;
+                            setTimeout(hideProgress, 2000);
+                        }
+                    }
+                });
+            }
+            
+            // Close modal
+            if (closeModal) {
+                closeModal.addEventListener('click', function() {
+                    if (successModal) successModal.classList.add('hidden');
+                    if (form) form.reset();
+                    
+                    if (cameraInput) cameraInput.value = '';
+                    if (galleryInput) galleryInput.value = '';
+                    currentFile = null;
+                    
+                    const previewContainer = document.getElementById('previewContainer');
+                    const uploadStatus = document.getElementById('uploadStatus');
+                    
+                    if (previewContainer) previewContainer.classList.add('hidden');
+                    if (uploadStatus) uploadStatus.classList.add('hidden');
+                    
+                    const cropSections = document.getElementById('cropSections');
+                    if (cropSections && cropSections.children.length > 0) {
+                        const firstCrop = cropSections.children[0];
+                        cropSections.innerHTML = '';
+                        cropSections.appendChild(firstCrop);
+                        cropCounter = 1;
+                        updateRemoveButtons();
+                    }
+                    
+                    hideProgress();
+                    
+                    // Reset area warning
+                    const areaWarning = document.getElementById('areaWarning');
+                    const areaHint = document.getElementById('areaHint');
+                    if (areaWarning) areaWarning.classList.add('hidden');
+                    if (areaHint) {
+                        areaHint.textContent = 'Enter the land area of your farm';
+                        areaHint.classList.remove('text-red-600', 'text-yellow-600');
+                    }
+                });
+            }
+            
+            // Set default dates
+            const today = new Date().toISOString().split('T')[0];
+            const dateInputs = document.querySelectorAll('input[name="datePlanted[]"]');
+            if (dateInputs.length > 0) dateInputs[0].value = today;
+            
+            const harvestDate = new Date();
+            harvestDate.setDate(harvestDate.getDate() + 90);
+            const harvestInputs = document.querySelectorAll('input[name="harvestDate[]"]');
+            if (harvestInputs.length > 0) harvestInputs[0].value = harvestDate.toISOString().split('T')[0];
+            
+            updateRemoveButtons();
+            console.log("AgriTrack application initialized successfully!");
+        }
 
-    // Fallback initialization
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initApp);
-    } else {
-        initApp();
-    }
-</script>
+        // Initialize when DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM fully loaded, initializing app...");
+            initApp();
+        });
+
+        // Fallback initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
 </body>
 </html>
