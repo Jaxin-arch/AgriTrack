@@ -40,7 +40,7 @@ body {
   position: fixed;
   bottom: 30px;
   right: 30px;
-  z-index: 1000;
+  z-index: 9999;
 }
 .menu-button {
   width: 60px;
@@ -55,6 +55,8 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   transition: all 0.3s ease;
+  position: relative;
+  z-index: 10000;
 }
 .menu-button:hover {
   background: linear-gradient(to bottom, #2E7D32, 
@@ -104,6 +106,7 @@ body {
   color: #333;
   text-decoration: none;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 .menu-item:hover {
   background-color: #f5f5f5;
@@ -300,11 +303,10 @@ body {
   transition: transform 0.3s ease-in-out;
   z-index: 1000;
   padding: 15px;
-  /* Remove overflow-y from here */
 }
 
 #slidePanel.open {
-  transform: translateY(-450px); /* Changed to -450px to match height */
+  transform: translateY(-450px);
 }
 
 #slidePanelHandle {
@@ -314,17 +316,14 @@ body {
   border-radius: 5px;
   margin: 0 auto 15px;
   cursor: pointer;
-  /* Prevent handle from interfering with scrolling */
   touch-action: none;
 }
 
 #slidePanelContent {
-  height: calc(100% - 30px); /* Adjust if needed */
+  height: calc(100% - 30px);
   overflow-y: auto;
-  /* Improve scrolling behavior */
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  overscroll-behavior: contain; /* Prevent scroll chaining */
-  /* Optional: add padding if content looks cramped */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 5px;
 }
 /* Barangay Info Styles */
@@ -385,7 +384,7 @@ body {
 /* Add this to your existing CSS */
 #barangayTitle {
   cursor: pointer;
-  user-select: none; /* Prevents text selection when clicking */
+  user-select: none;
 }
 
 /* Fix for market prices dropdown responsiveness */
@@ -466,30 +465,6 @@ body {
     <div class="map-controls">
 <select id="barangaySelector">
           <option value="" disabled selected>Select Barangay</option>
-          <option value="Bagong Silang">Bagong Silang</option>
-          <option value="Bahi">Bahi</option>
-          <option value="Cambagang">Cambagang</option>
-          <option value="Coronobe">Coronobe</option>
-          <option value="Katipunan">Katipunan</option>
-          <option value="Langgawisan">Langgawisan</option>
-          <option value="Lahi">Lahi</option>
-          <option id="Mabugnao-btn" value="Mabugnao">Mabugnao</option>
-          <option value="Magcagong">Magcagong</option>
-          <option value="Mahayahay">Mahayahay</option>
-          <option value="Mapawa">Mapawa</option>
-          <option value="Maragusan">Poblacion</option>
-          <option value="Mauswagon">Mauswagon</option>
-          <option value="New Albay">New Albay</option>
-          <option value="New Katipunan">New Katipunan</option>
-          <option value="New Manay">New Manay</option>
-          <option value="New Panay">New Panay</option>
-          <option value="Paloc">Paloc</option>
-          <option value="Pamintaran">Pamintaran</option>
-          <option value="Parasanon">Parasanon</option>
-          <option value="Talian">Talian</option>
-          <option value="Tandik">Tandik</option>
-          <option value="Tigbao">Tigbao</option>
-          <option value="Tupas">Tupas</option>
         </select>
       <button id="resetMap" title="Reset view">
         <i class="ri-refresh-line"></i>
@@ -711,6 +686,58 @@ body {
         });
     }
   });
+
+  // ============================================================================
+  // HAMBURGER MENU FUNCTIONALITY - FIXED
+  // ============================================================================
+  
+  const menuButton = document.getElementById('menuButton');
+  const menuContent = document.getElementById('menuContent');
+  let isMenuOpen = false;
+
+  if (menuButton && menuContent) {
+    // Toggle menu on button click
+    menuButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      isMenuOpen = !isMenuOpen;
+      
+      if (isMenuOpen) {
+        menuButton.classList.add('active');
+        menuContent.classList.add('show');
+      } else {
+        menuButton.classList.remove('active');
+        menuContent.classList.remove('show');
+      }
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', function(e) {
+      const isClickInside = menuButton.contains(e.target) || menuContent.contains(e.target);
+      
+      if (!isClickInside && isMenuOpen) {
+        isMenuOpen = false;
+        menuButton.classList.remove('active');
+        menuContent.classList.remove('show');
+      }
+    });
+
+    // Prevent menu content clicks from closing the menu
+    menuContent.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+
+    // Close menu when clicking on menu items (except the menu button itself)
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(item => {
+      item.addEventListener('click', function() {
+        isMenuOpen = false;
+        menuButton.classList.remove('active');
+        menuContent.classList.remove('show');
+      });
+    });
+  }
 
   // Add this debug function
   async function debugDataLoading() {
@@ -1045,8 +1072,7 @@ body {
     console.log('💰 DEBUG: Filtering market prices for:', selectedCrop);
     
     if (!marketPrices || marketPrices.length === 0) {
-        console.log('💰 DEBUG: No market prices to filter');
-        // Load data if empty
+        console.log('💰 DEBUG: No market prices to filter, loading data...');
         loadMarketPricesData();
         return;
     }
@@ -1347,37 +1373,17 @@ body {
   }
 
   // ============================================================================
-  // MENU AND NAVIGATION
+  // SECTION NAVIGATION
   // ============================================================================
 
-  const menuButton = document.getElementById('menuButton');
-  const menuContent = document.getElementById('menuContent');
-
-  if (menuButton && menuContent) {
-    menuButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      menuButton.classList.toggle('active');
-      menuContent.classList.toggle('show');
-    });
-
-    document.addEventListener('click', function() {
-      menuButton.classList.remove('active');
-      menuContent.classList.remove('show');
-    });
-
-    menuContent.addEventListener('click', function(e) {
-      e.stopPropagation();
-    });
-  }
-
-  const menuItems = document.querySelectorAll('.menu-item[data-section]');
+  const sectionMenuItems = document.querySelectorAll('.menu-item[data-section]');
   const sections = document.querySelectorAll('.section');
 
-  menuItems.forEach(item => {
+  sectionMenuItems.forEach(item => {
     item.addEventListener('click', function(e) {
       e.preventDefault();
       
-      menuItems.forEach(btn => btn.classList.remove('active'));
+      sectionMenuItems.forEach(btn => btn.classList.remove('active'));
       sections.forEach(section => section.classList.remove('active'));
       
       this.classList.add('active');
@@ -1387,7 +1393,9 @@ body {
         sectionElement.classList.add('active');
       }
       
+      // Close menu after section change
       if (menuButton && menuContent) {
+        isMenuOpen = false;
         menuButton.classList.remove('active');
         menuContent.classList.remove('show');
       }
@@ -1813,4 +1821,4 @@ body {
 </script>
 
 </body>
-</html>
+  </html>
