@@ -1,8 +1,3 @@
-You're right! Looking at the code, there's a duplicate "Top Crops in Maragusan" section in the Home panel. Let me fix that by removing the duplicate section.
-
-Here's the complete updated code with the duplicate removed:
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -494,6 +489,7 @@ body {
         <div class="flex flex-col sm:flex-row gap-2">
           <div class="relative flex-1 min-w-[160px]">
             <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+              <option value="all">All Crops</option>
               <option value="pechay">Pechay</option>
 <option value="chinese_cabbage">Chinese Cabbage</option>
 <option value="lettuce">Lettuce</option>
@@ -728,17 +724,22 @@ body {
   });
 
   // ============================================================================
-  // TAB NAVIGATION
+  // TAB NAVIGATION - FIXED
   // ============================================================================
   function setupTabNavigation() {
     const tabs = document.querySelectorAll('.tab-item');
     const sections = document.querySelectorAll('.section');
 
     console.log('🔧 Setting up tab navigation...');
+    console.log('📌 Found tabs:', tabs.length);
+    console.log('📌 Found sections:', sections.length);
 
     tabs.forEach(tab => {
       tab.addEventListener('click', function(e) {
         e.preventDefault();
+        e.stopPropagation();
+
+        console.log('🔄 Tab clicked:', this.getAttribute('data-section'));
 
         // Remove active from all tabs
         tabs.forEach(t => t.classList.remove('active'));
@@ -754,10 +755,28 @@ body {
         const targetSection = document.getElementById(sectionId);
         if (targetSection) {
           targetSection.classList.add('active');
+          console.log('✅ Showing section:', sectionId);
+        } else {
+          console.log('❌ Section not found:', sectionId);
         }
 
-        // Handle market section
-        if (sectionId === 'other-section') {
+        // Handle map initialization if needed
+        if (sectionId === 'map-section') {
+          setTimeout(function() {
+            if (!mapInitialized) {
+              initAgriculturalMap();
+              mapInitialized = true;
+            } else {
+              if (window.mapInstance) {
+                window.mapInstance.invalidateSize();
+              }
+              if (window.pieChart) {
+                window.pieChart.resize();
+              }
+            }
+          }, 200);
+        } else if (sectionId === 'other-section') {
+          // Load market data when switching to market tab
           setTimeout(function() {
             loadMarketPricesData();
             if (window.priceChart) {
@@ -1886,4 +1905,4 @@ body {
 </script>
 
 </body>
-</html>
+  </html>
