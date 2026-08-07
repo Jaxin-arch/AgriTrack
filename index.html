@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -387,6 +387,15 @@ body {
   cursor: pointer;
   user-select: none; /* Prevents text selection when clicking */
 }
+
+/* Fix for market prices dropdown responsiveness */
+#priceCropFilter {
+  cursor: pointer;
+  background-color: white;
+}
+#priceCropFilter option {
+  padding: 8px;
+}
 </style>
 </head>
 <body class="bg-white">
@@ -516,8 +525,8 @@ body {
       <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
         <h2 class="text-xl font-semibold text-gray-800">Market Analytics</h2>
         <div class="flex flex-col sm:flex-row gap-2">
-          <div class="relative flex-1">
-            <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent">
+          <div class="relative flex-1 min-w-[160px]">
+            <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
               <option value="pechay">Pechay</option>
 <option value="chinese_cabbage">Chinese Cabbage</option>
 <option value="lettuce">Lettuce</option>
@@ -590,7 +599,7 @@ body {
 <script>
   // Application state for real data
   let approvedFarms = [];
-  let cropStatistics = {};
+  let cropStatistics = [];
   let marketPrices = [];
   let supabase = null;
   
@@ -918,8 +927,8 @@ body {
         if (!supabase) {
             console.log('💰 DEBUG: No Supabase, calculating from crops');
             // If no supabase, calculate from crop statistics
-            const cropStatsArray = cropStatistics && Object.keys(cropStatistics).length > 0 
-                ? Object.values(cropStatistics) 
+            const cropStatsArray = cropStatistics && cropStatistics.length > 0 
+                ? cropStatistics 
                 : [];
             const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
             console.log('💰 DEBUG: Calculated prices:', calculatedPrices);
@@ -942,8 +951,8 @@ body {
         if (error || !prices || prices.length === 0) {
             console.log('💰 DEBUG: No market prices, calculating from crops');
             // Calculate prices from crop data if no market prices available
-            const cropStatsArray = cropStatistics && Object.keys(cropStatistics).length > 0 
-                ? Object.values(cropStatistics) 
+            const cropStatsArray = cropStatistics && cropStatistics.length > 0 
+                ? cropStatistics 
                 : [];
             const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
             console.log('💰 DEBUG: Fallback calculated prices:', calculatedPrices);
@@ -965,8 +974,8 @@ body {
     } catch (error) {
         console.error('❌ Error loading market prices:', error);
         // Calculate prices from crop data as fallback
-        const cropStatsArray = cropStatistics && Object.keys(cropStatistics).length > 0 
-            ? Object.values(cropStatistics) 
+        const cropStatsArray = cropStatistics && cropStatistics.length > 0 
+            ? cropStatistics 
             : [];
         const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
         console.log('💰 DEBUG: Error fallback prices:', calculatedPrices);
@@ -1037,6 +1046,8 @@ body {
     
     if (!marketPrices || marketPrices.length === 0) {
         console.log('💰 DEBUG: No market prices to filter');
+        // Load data if empty
+        loadMarketPricesData();
         return;
     }
     
@@ -1512,7 +1523,7 @@ body {
           click: function(e) {
               showBarangay(feature);
               const selector = document.getElementById('barangaySelector');
-              if (selector) selector.value = feature.properties.adm4_en.toLowerCase();
+              if (selector) selector.value = feature.properties.adm4_en;
           }
       });
     }
@@ -1729,9 +1740,14 @@ body {
     // Populate barangay selector
     const selector = document.getElementById('barangaySelector');
     if (selector) {
+      // Clear existing options except first
+      while (selector.options.length > 1) {
+        selector.remove(1);
+      }
+      
       maragusanGeoJSON.features.forEach(feature => {
         const option = document.createElement('option');
-        option.value = feature.properties.adm4_en.toLowerCase();
+        option.value = feature.properties.adm4_en;
         option.textContent = feature.properties.adm4_en;
         selector.appendChild(option);
       });
@@ -1798,5 +1814,3 @@ body {
 
 </body>
 </html>
-
-
