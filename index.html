@@ -585,6 +585,7 @@ body {
   let cropStatistics = [];
   let marketPrices = [];
   let supabase = null;
+  let mapInitialized = false;
   
   // All available crops from your list
   const ALL_CROPS = [
@@ -665,19 +666,6 @@ body {
     // Set up tab navigation
     setupTabNavigation();
     
-    // Initialize the map when map section is accessed
-    let mapInitialized = false;
-    document.querySelectorAll('.tab-item[data-section="map-section"]').forEach(tab => {
-      tab.addEventListener('click', function() {
-        if (!mapInitialized) {
-          setTimeout(() => {
-            initAgriculturalMap();
-            mapInitialized = true;
-          }, 100);
-        }
-      });
-    });
-
     // Load initial data
     loadApprovedFarmsData();
     debugDataLoading();
@@ -721,13 +709,25 @@ body {
 
         // Handle map initialization if needed
         if (sectionId === 'map-section') {
-          setTimeout(() => {
-            if (window.pieChart) {
-              window.pieChart.resize();
+          // Initialize map with a slight delay to ensure the section is visible
+          setTimeout(function() {
+            if (!mapInitialized) {
+              initAgriculturalMap();
+              mapInitialized = true;
+            } else {
+              // If already initialized, just resize the map
+              if (window.mapInstance) {
+                setTimeout(function() {
+                  window.mapInstance.invalidateSize();
+                }, 100);
+              }
+              if (window.pieChart) {
+                window.pieChart.resize();
+              }
             }
-          }, 150);
+          }, 200);
         } else if (sectionId === 'other-section') {
-          setTimeout(() => {
+          setTimeout(function() {
             loadMarketPricesData();
             if (window.priceChart) {
               window.priceChart.resize();
@@ -1374,6 +1374,11 @@ body {
   window.addEventListener('resize', function() {
     if (window.pieChart) window.pieChart.resize();
     if (window.priceChart) window.priceChart.resize();
+    if (window.mapInstance) {
+      setTimeout(function() {
+        window.mapInstance.invalidateSize();
+      }, 100);
+    }
   });
 
   // Update date
@@ -1389,13 +1394,21 @@ body {
 
   function initAgriculturalMap() {
     const mapElement = document.getElementById('maragusanMap');
-    if (!mapElement) return;
+    if (!mapElement) {
+      console.log('❌ Map element not found');
+      return;
+    }
+    
+    console.log('🗺️ Initializing map...');
     
     // Initialize map
     const map = L.map('maragusanMap', {
       preferCanvas: true,
       zoomControl: false
     }).setView([7.3167, 126.1167], 12);
+    
+    // Store map instance globally for resize
+    window.mapInstance = map;
     
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1735,6 +1748,8 @@ body {
         map.setView([7.3167, 126.1167], 12);
       });
     }
+    
+    console.log('✅ Map initialized successfully');
   }
 
   // ============================================================================
@@ -1767,4 +1782,4 @@ body {
 </script>
 
 </body>
-  </html>
+</html>
