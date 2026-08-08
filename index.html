@@ -580,11 +580,34 @@ body {
 </a>
 
 <script>
+  // ============================================================================
+  // SUPABASE CONFIGURATION - FIXED
+  // ============================================================================
+  const SUPABASE_URL = 'https://mqmlffykchrviajwvykj.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+
+  // Initialize Supabase client properly
+  let supabase = null;
+  
+  try {
+    // Check if supabase is available
+    if (typeof supabaseJs !== 'undefined') {
+      supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('✅ Supabase initialized successfully via supabaseJs');
+    } else if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      console.log('✅ Supabase initialized successfully via window.supabase');
+    } else {
+      console.warn('⚠️ Supabase library not loaded, using fallback data');
+    }
+  } catch (err) {
+    console.error('❌ Failed to initialize Supabase:', err);
+  }
+
   // Application state for real data
   let approvedFarms = [];
   let cropStatistics = [];
   let marketPrices = [];
-  let supabase = null;
   
   // All available crops from your list
   const ALL_CROPS = [
@@ -651,23 +674,74 @@ body {
     'sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
   };
 
+  // ============================================================================
+  // FALLBACK DATA - Used when Supabase is not available
+  // ============================================================================
+  const FALLBACK_FARMS = [
+    {
+      id: 1,
+      land_area: 2.5,
+      area_unit: 'hectares',
+      farm_status: 'approved',
+      verified_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      farmers: {
+        id: 1,
+        full_name: 'Juan Dela Cruz',
+        barangay: 'Poblacion'
+      },
+      crops: [
+        { crop_type: 'rice', harvest_yield: 5000, area_planted: 1.5 },
+        { crop_type: 'corn', harvest_yield: 3000, area_planted: 1.0 }
+      ]
+    },
+    {
+      id: 2,
+      land_area: 3.0,
+      area_unit: 'hectares',
+      farm_status: 'approved',
+      verified_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      farmers: {
+        id: 2,
+        full_name: 'Maria Santos',
+        barangay: 'Mapawa'
+      },
+      crops: [
+        { crop_type: 'banana', harvest_yield: 8000, area_planted: 2.0 },
+        { crop_type: 'coconut', harvest_yield: 6000, area_planted: 1.0 }
+      ]
+    },
+    {
+      id: 3,
+      land_area: 4.0,
+      area_unit: 'hectares',
+      farm_status: 'approved',
+      verified_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      farmers: {
+        id: 3,
+        full_name: 'Pedro Reyes',
+        barangay: 'Bahi'
+      },
+      crops: [
+        { crop_type: 'mango', harvest_yield: 12000, area_planted: 3.0 },
+        { crop_type: 'papaya', harvest_yield: 7000, area_planted: 1.0 }
+      ]
+    }
+  ];
+
+  const FALLBACK_PRICES = [
+    { crop_type: 'rice', farm_gate_price: 32.50, retail_price: 45.75, demand: 'High', trend: 'up', trend_percentage: 5, recorded_at: new Date().toISOString() },
+    { crop_type: 'corn', farm_gate_price: 15.20, retail_price: 22.80, demand: 'Medium', trend: 'stable', trend_percentage: 0, recorded_at: new Date().toISOString() },
+    { crop_type: 'banana', farm_gate_price: 25.00, retail_price: 35.50, demand: 'Very High', trend: 'up', trend_percentage: 8, recorded_at: new Date().toISOString() },
+    { crop_type: 'coconut', farm_gate_price: 18.00, retail_price: 28.00, demand: 'High', trend: 'up', trend_percentage: 3, recorded_at: new Date().toISOString() },
+    { crop_type: 'mango', farm_gate_price: 45.00, retail_price: 65.00, demand: 'Very High', trend: 'up', trend_percentage: 10, recorded_at: new Date().toISOString() }
+  ];
+
   // Initialize application
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 AgriTrack Main Page Initializing...');
-    
-    // Initialize Supabase Client
-    try {
-        if (typeof window.supabase !== 'undefined') {
-            const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
-            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-            console.log('✅ Supabase initialized');
-        } else {
-            console.error('❌ Supabase library failed to load from CDN — continuing without it');
-        }
-    } catch (err) {
-        console.error('❌ Supabase initialization failed:', err);
-    }
     
     // Set up tab navigation
     setupTabNavigation();
@@ -750,7 +824,7 @@ body {
     console.log('🔍 DEBUG: Checking data loading...');
     
     if (!supabase) {
-        console.log('❌ Supabase not initialized');
+        console.log('❌ Supabase not initialized, using fallback data');
         return;
     }
 
@@ -784,8 +858,13 @@ body {
     console.log('🔍 DEBUG: Starting loadApprovedFarmsData');
     
     if (!supabase) {
-        console.log('❌ DEBUG: Supabase not initialized yet');
-        updateTopCropsUI([]);
+        console.log('❌ DEBUG: Supabase not initialized, using fallback data');
+        // Use fallback data
+        approvedFarms = FALLBACK_FARMS;
+        cropStatistics = processCropData(approvedFarms);
+        updateTopCropsUI(cropStatistics);
+        updateBarangayCropData(approvedFarms);
+        debugBarangayData();
         return;
     }
 
@@ -817,28 +896,37 @@ body {
 
         if (error) {
             console.error('❌ DEBUG: Error fetching approved farms:', error);
-            updateTopCropsUI([]);
+            console.log('🔄 Using fallback data due to error');
+            approvedFarms = FALLBACK_FARMS;
+            cropStatistics = processCropData(approvedFarms);
+            updateTopCropsUI(cropStatistics);
+            updateBarangayCropData(approvedFarms);
             return;
         }
 
-        console.log('🔍 DEBUG: Setting approvedFarms to:', farms);
-        approvedFarms = farms || [];
-
-        if (approvedFarms.length > 0) {
+        if (farms && farms.length > 0) {
           console.log('🔍 DEBUG: Processing crop data...');
+          approvedFarms = farms;
           cropStatistics = processCropData(approvedFarms);
           console.log('🔍 DEBUG: cropStatistics after processing:', cropStatistics);
           updateTopCropsUI(cropStatistics);
           updateBarangayCropData(approvedFarms);
           debugBarangayData();
         } else {
-            console.log('🔍 DEBUG: No approved farms found');
-            updateTopCropsUI([]);
+            console.log('🔍 DEBUG: No approved farms found, using fallback');
+            approvedFarms = FALLBACK_FARMS;
+            cropStatistics = processCropData(approvedFarms);
+            updateTopCropsUI(cropStatistics);
+            updateBarangayCropData(approvedFarms);
         }
         
     } catch (error) {
         console.error('❌ DEBUG: Error loading approved farms:', error);
-        updateTopCropsUI([]);
+        console.log('🔄 Using fallback data due to error');
+        approvedFarms = FALLBACK_FARMS;
+        cropStatistics = processCropData(approvedFarms);
+        updateTopCropsUI(cropStatistics);
+        updateBarangayCropData(approvedFarms);
     }
   }
 
@@ -958,16 +1046,10 @@ body {
     
     try {
         if (!supabase) {
-            console.log('💰 DEBUG: No Supabase, calculating from crops');
-            // If no supabase, calculate from crop statistics
-            const cropStatsArray = cropStatistics && cropStatistics.length > 0 
-                ? cropStatistics 
-                : [];
-            const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
-            console.log('💰 DEBUG: Calculated prices:', calculatedPrices);
-            marketPrices = calculatedPrices; // Store for filtering
-            updateMarketPricesUI(calculatedPrices);
-            updateMarketPricesChart(calculatedPrices);
+            console.log('💰 DEBUG: No Supabase, using fallback data');
+            marketPrices = FALLBACK_PRICES;
+            updateMarketPricesUI(FALLBACK_PRICES);
+            updateMarketPricesChart(FALLBACK_PRICES);
             return;
         }
 
@@ -982,95 +1064,37 @@ body {
         console.log('💰 DEBUG: Supabase prices error:', error);
 
         if (error || !prices || prices.length === 0) {
-            console.log('💰 DEBUG: No market prices, calculating from crops');
-            // Calculate prices from crop data if no market prices available
-            const cropStatsArray = cropStatistics && cropStatistics.length > 0 
-                ? cropStatistics 
-                : [];
-            const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
-            console.log('💰 DEBUG: Fallback calculated prices:', calculatedPrices);
-            marketPrices = calculatedPrices; // Store for filtering
-            updateMarketPricesUI(calculatedPrices);
-            updateMarketPricesChart(calculatedPrices);
+            console.log('💰 DEBUG: No market prices, using fallback');
+            marketPrices = FALLBACK_PRICES;
+            updateMarketPricesUI(FALLBACK_PRICES);
+            updateMarketPricesChart(FALLBACK_PRICES);
         } else {
             console.log('💰 DEBUG: Using Supabase prices data');
             // Filter prices to only include our defined crops
             const filteredPrices = prices.filter(price => 
                 ALL_CROPS.includes(price.crop_type)
             );
-            console.log('💰 DEBUG: Filtered prices:', filteredPrices);
-            marketPrices = filteredPrices; // Store for filtering
-            updateMarketPricesUI(filteredPrices);
-            updateMarketPricesChart(filteredPrices);
+            
+            // If filtered prices are empty, use fallback
+            if (filteredPrices.length === 0) {
+                console.log('💰 DEBUG: No matching crops in prices, using fallback');
+                marketPrices = FALLBACK_PRICES;
+                updateMarketPricesUI(FALLBACK_PRICES);
+                updateMarketPricesChart(FALLBACK_PRICES);
+            } else {
+                marketPrices = filteredPrices;
+                updateMarketPricesUI(filteredPrices);
+                updateMarketPricesChart(filteredPrices);
+            }
         }
         
     } catch (error) {
         console.error('❌ Error loading market prices:', error);
-        // Calculate prices from crop data as fallback
-        const cropStatsArray = cropStatistics && cropStatistics.length > 0 
-            ? cropStatistics 
-            : [];
-        const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
-        console.log('💰 DEBUG: Error fallback prices:', calculatedPrices);
-        marketPrices = calculatedPrices; // Store for filtering
-        updateMarketPricesUI(calculatedPrices);
-        updateMarketPricesChart(calculatedPrices);
+        console.log('🔄 Using fallback data due to error');
+        marketPrices = FALLBACK_PRICES;
+        updateMarketPricesUI(FALLBACK_PRICES);
+        updateMarketPricesChart(FALLBACK_PRICES);
     }
-  }
-
-  // FIXED: Price calculation function
-  function calculateMarketPricesFromCrops(cropStats) {
-    console.log('💰 DEBUG: calculateMarketPricesFromCrops input:', cropStats);
-    
-    // Check if cropStats is valid
-    if (!cropStats || cropStats.length === 0) {
-        console.log('💰 DEBUG: No crop stats available');
-        // Return some sample data for demonstration
-        return [
-            {
-                crop_type: 'rice',
-                farm_gate_price: 32.50,
-                retail_price: 45.75,
-                demand: 'High',
-                trend: 'up',
-                trend_percentage: 5,
-                recorded_at: new Date().toISOString()
-            },
-            {
-                crop_type: 'corn',
-                farm_gate_price: 15.20,
-                retail_price: 22.80,
-                demand: 'Medium',
-                trend: 'stable',
-                trend_percentage: 0,
-                recorded_at: new Date().toISOString()
-            },
-            {
-                crop_type: 'banana',
-                farm_gate_price: 25.00,
-                retail_price: 35.50,
-                demand: 'Very High',
-                trend: 'up',
-                trend_percentage: 8,
-                recorded_at: new Date().toISOString()
-            }
-        ];
-    }
-    
-    // If cropStats is an object, convert it to array
-    const cropsArray = Array.isArray(cropStats) ? cropStats : Object.values(cropStats);
-    
-    console.log('💰 DEBUG: Processing crops array:', cropsArray);
-    
-    return cropsArray.map(crop => ({
-        crop_type: crop.crop_type || 'Unknown',
-        farm_gate_price: crop.estimated_farm_gate || calculateFarmGatePrice(crop.crop_type, crop.total_yield || 0),
-        retail_price: crop.estimated_retail || calculateRetailPrice(crop.crop_type, crop.total_yield || 0),
-        demand: crop.demand_level || calculateDemandLevel(crop.total_yield || 0),
-        trend: (crop.trend && crop.trend.direction) || calculateTrend(crop.crop_type).direction,
-        trend_percentage: (crop.trend && crop.trend.percentage) || calculateTrend(crop.crop_type).percentage,
-        recorded_at: new Date().toISOString()
-    }));
   }
 
   // ADDED: Filter market prices function
@@ -1318,14 +1342,14 @@ body {
 
   function calculateFarmGatePrice(cropType, yieldAmount) {
     const basePrices = {
-        'Banana': 25, 'Durian': 80, 'Coconut': 18, 'Mango': 45, 'Pineapple': 35,
-        'Papaya': 20, 'Watermelon': 15, 'Rice': 32, 'Corn': 15, 'Cabbage': 18,
-        'Petchay': 12, 'Kangkong': 10, 'Spinach': 15, 'Tomato': 25, 'Eggplant': 20,
-        'Bell Pepper': 30, 'Ampalaya': 18, 'Sayote': 12, 'Squash': 15, 'Okra': 22,
-        'Baguio Beans': 28, 'String Beans': 20, 'Mung Bean': 25, 'Peanut': 35,
-        'Carrots': 22, 'Radish': 15, 'Sweet Potato': 18, 'Cassava': 12, 'Ginger': 40,
-        'Garlic': 60, 'Onion': 35, 'Coffee': 120, 'Cacao': 90, 'Abaca': 25,
-        'Rubber': 30, 'Sugarcane': 15
+        'banana': 25, 'durian': 80, 'coconut': 18, 'mango': 45, 'pineapple': 35,
+        'papaya': 20, 'watermelon': 15, 'rice': 32, 'corn': 15, 'cabbage': 18,
+        'pechay': 12, 'kangkong': 10, 'spinach': 15, 'tomato': 25, 'eggplant': 20,
+        'bell pepper': 30, 'ampalaya': 18, 'sayote': 12, 'squash': 15, 'okra': 22,
+        'baguio beans': 28, 'string_beans': 20, 'mung bean': 25, 'peanut': 35,
+        'carrots': 22, 'radish': 15, 'sweet potato': 18, 'cassava': 12, 'ginger': 40,
+        'garlic': 60, 'onion': 35, 'coffee': 120, 'cacao': 90, 'abaca': 25,
+        'rubber': 30, 'sugarcane': 15
     };
     
     const basePrice = basePrices[cropType] || 20;
@@ -1774,5 +1798,4 @@ body {
 </script>
 
 </body>
-</html>
-
+  </html>
