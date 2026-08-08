@@ -489,7 +489,6 @@ body {
         <div class="flex flex-col sm:flex-row gap-2">
           <div class="relative flex-1 min-w-[160px]">
             <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
-              <option value="all">All Crops</option>
               <option value="pechay">Pechay</option>
 <option value="chinese_cabbage">Chinese Cabbage</option>
 <option value="lettuce">Lettuce</option>
@@ -586,7 +585,6 @@ body {
   let cropStatistics = [];
   let marketPrices = [];
   let supabase = null;
-  let mapInitialized = false;
   
   // All available crops from your list
   const ALL_CROPS = [
@@ -653,68 +651,46 @@ body {
     'sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
   };
 
-  // ============================================================================
-  // SAFE SUPABASE INITIALIZATION - FIXED
-  // ============================================================================
-  function initSupabase() {
-    try {
-      // Check if window.supabase exists
-      if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
-        console.warn('⚠️ Supabase library not loaded. Using fallback data mode.');
-        return null;
-      }
-      
-      const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
-      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
-      
-      const client = window.supabase.createClient(supabaseUrl, supabaseKey);
-      console.log('✅ Supabase initialized successfully');
-      return client;
-    } catch (error) {
-      console.warn('⚠️ Failed to initialize Supabase:', error.message);
-      console.warn('📊 Continuing with fallback data mode.');
-      return null;
-    }
-  }
-
   // Initialize application
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 AgriTrack Main Page Initializing...');
     
-    // STEP 1: Initialize Supabase safely - won't break the page if it fails
-    supabase = initSupabase();
+    // Initialize Supabase Client
+    try {
+        if (typeof window.supabase !== 'undefined') {
+            const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+            supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+            console.log('✅ Supabase initialized');
+        } else {
+            console.error('❌ Supabase library failed to load from CDN — continuing without it');
+        }
+    } catch (err) {
+        console.error('❌ Supabase initialization failed:', err);
+    }
     
-    // STEP 2: Set up tab navigation - ALWAYS works regardless of Supabase
+    // Set up tab navigation
     setupTabNavigation();
     
-    // STEP 3: Initialize map on demand
+    // Initialize the map when map section is accessed
+    let mapInitialized = false;
     document.querySelectorAll('.tab-item[data-section="map-section"]').forEach(tab => {
       tab.addEventListener('click', function() {
         if (!mapInitialized) {
-          setTimeout(function() {
+          setTimeout(() => {
             initAgriculturalMap();
             mapInitialized = true;
-          }, 200);
-        } else {
-          // If already initialized, just resize
-          if (window.mapInstance) {
-            setTimeout(function() {
-              window.mapInstance.invalidateSize();
-            }, 100);
-          }
-          if (window.pieChart) {
-            window.pieChart.resize();
-          }
+          }, 100);
         }
       });
     });
 
-    // STEP 4: Load data - handles Supabase being null gracefully
+    // Load initial data
     loadApprovedFarmsData();
     debugDataLoading();
     loadMarketPricesData();
     
-    // STEP 5: Crop filter functionality
+    // ADDED: Crop filter functionality
     const priceCropFilter = document.getElementById('priceCropFilter');
     if (priceCropFilter) {
         priceCropFilter.addEventListener('change', function() {
@@ -724,22 +700,15 @@ body {
   });
 
   // ============================================================================
-  // TAB NAVIGATION - FIXED
+  // TAB NAVIGATION (replaces hamburger menu)
   // ============================================================================
   function setupTabNavigation() {
     const tabs = document.querySelectorAll('.tab-item');
     const sections = document.querySelectorAll('.section');
 
-    console.log('🔧 Setting up tab navigation...');
-    console.log('📌 Found tabs:', tabs.length);
-    console.log('📌 Found sections:', sections.length);
-
     tabs.forEach(tab => {
       tab.addEventListener('click', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-
-        console.log('🔄 Tab clicked:', this.getAttribute('data-section'));
 
         // Remove active from all tabs
         tabs.forEach(t => t.classList.remove('active'));
@@ -755,29 +724,17 @@ body {
         const targetSection = document.getElementById(sectionId);
         if (targetSection) {
           targetSection.classList.add('active');
-          console.log('✅ Showing section:', sectionId);
-        } else {
-          console.log('❌ Section not found:', sectionId);
         }
 
         // Handle map initialization if needed
         if (sectionId === 'map-section') {
-          setTimeout(function() {
-            if (!mapInitialized) {
-              initAgriculturalMap();
-              mapInitialized = true;
-            } else {
-              if (window.mapInstance) {
-                window.mapInstance.invalidateSize();
-              }
-              if (window.pieChart) {
-                window.pieChart.resize();
-              }
+          setTimeout(() => {
+            if (window.pieChart) {
+              window.pieChart.resize();
             }
-          }, 200);
+          }, 150);
         } else if (sectionId === 'other-section') {
-          // Load market data when switching to market tab
-          setTimeout(function() {
+          setTimeout(() => {
             loadMarketPricesData();
             if (window.priceChart) {
               window.priceChart.resize();
@@ -786,8 +743,6 @@ body {
         }
       });
     });
-    
-    console.log('✅ Tab navigation setup complete');
   }
 
   // Add this debug function
@@ -795,7 +750,7 @@ body {
     console.log('🔍 DEBUG: Checking data loading...');
     
     if (!supabase) {
-        console.log('ℹ️ Supabase not available - using fallback data');
+        console.log('❌ Supabase not initialized');
         return;
     }
 
@@ -829,8 +784,8 @@ body {
     console.log('🔍 DEBUG: Starting loadApprovedFarmsData');
     
     if (!supabase) {
-        console.log('ℹ️ Supabase not available - using fallback data');
-        updateTopCropsUI(getFallbackCropData());
+        console.log('❌ DEBUG: Supabase not initialized yet');
+        updateTopCropsUI([]);
         return;
     }
 
@@ -862,7 +817,7 @@ body {
 
         if (error) {
             console.error('❌ DEBUG: Error fetching approved farms:', error);
-            updateTopCropsUI(getFallbackCropData());
+            updateTopCropsUI([]);
             return;
         }
 
@@ -878,58 +833,13 @@ body {
           debugBarangayData();
         } else {
             console.log('🔍 DEBUG: No approved farms found');
-            updateTopCropsUI(getFallbackCropData());
+            updateTopCropsUI([]);
         }
         
     } catch (error) {
         console.error('❌ DEBUG: Error loading approved farms:', error);
-        updateTopCropsUI(getFallbackCropData());
+        updateTopCropsUI([]);
     }
-  }
-
-  // Fallback crop data when Supabase is unavailable
-  function getFallbackCropData() {
-    return [
-      {
-        crop_type: 'Rice',
-        total_yield: 4500000,
-        total_area: 120,
-        total_farms: 45,
-        barangays: new Set(['Poblacion', 'Bahi', 'Mapawa']),
-        barangay_count: 3,
-        average_yield: 37500,
-        estimated_farm_gate: 32.50,
-        estimated_retail: 45.75,
-        demand_level: 'High',
-        trend: { direction: 'up', percentage: 5 }
-      },
-      {
-        crop_type: 'Corn',
-        total_yield: 3200000,
-        total_area: 95,
-        total_farms: 32,
-        barangays: new Set(['New Albay', 'Tupas', 'Coronobe']),
-        barangay_count: 3,
-        average_yield: 33684,
-        estimated_farm_gate: 15.20,
-        estimated_retail: 22.80,
-        demand_level: 'Medium',
-        trend: { direction: 'stable', percentage: 0 }
-      },
-      {
-        crop_type: 'Banana',
-        total_yield: 2800000,
-        total_area: 70,
-        total_farms: 28,
-        barangays: new Set(['Langgawisan', 'Mapawa', 'Poblacion']),
-        barangay_count: 3,
-        average_yield: 40000,
-        estimated_farm_gate: 25.00,
-        estimated_retail: 35.50,
-        demand_level: 'Very High',
-        trend: { direction: 'up', percentage: 8 }
-      }
-    ];
   }
 
   // Process real farm data into crop statistics
@@ -1048,11 +958,16 @@ body {
     
     try {
         if (!supabase) {
-            console.log('💰 Supabase not available - using fallback prices');
-            const fallbackPrices = getFallbackMarketPrices();
-            marketPrices = fallbackPrices;
-            updateMarketPricesUI(fallbackPrices);
-            updateMarketPricesChart(fallbackPrices);
+            console.log('💰 DEBUG: No Supabase, calculating from crops');
+            // If no supabase, calculate from crop statistics
+            const cropStatsArray = cropStatistics && cropStatistics.length > 0 
+                ? cropStatistics 
+                : [];
+            const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
+            console.log('💰 DEBUG: Calculated prices:', calculatedPrices);
+            marketPrices = calculatedPrices; // Store for filtering
+            updateMarketPricesUI(calculatedPrices);
+            updateMarketPricesChart(calculatedPrices);
             return;
         }
 
@@ -1071,10 +986,10 @@ body {
             // Calculate prices from crop data if no market prices available
             const cropStatsArray = cropStatistics && cropStatistics.length > 0 
                 ? cropStatistics 
-                : getFallbackCropData();
+                : [];
             const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
             console.log('💰 DEBUG: Fallback calculated prices:', calculatedPrices);
-            marketPrices = calculatedPrices;
+            marketPrices = calculatedPrices; // Store for filtering
             updateMarketPricesUI(calculatedPrices);
             updateMarketPricesChart(calculatedPrices);
         } else {
@@ -1084,7 +999,7 @@ body {
                 ALL_CROPS.includes(price.crop_type)
             );
             console.log('💰 DEBUG: Filtered prices:', filteredPrices);
-            marketPrices = filteredPrices;
+            marketPrices = filteredPrices; // Store for filtering
             updateMarketPricesUI(filteredPrices);
             updateMarketPricesChart(filteredPrices);
         }
@@ -1094,73 +1009,13 @@ body {
         // Calculate prices from crop data as fallback
         const cropStatsArray = cropStatistics && cropStatistics.length > 0 
             ? cropStatistics 
-            : getFallbackCropData();
+            : [];
         const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
         console.log('💰 DEBUG: Error fallback prices:', calculatedPrices);
-        marketPrices = calculatedPrices;
+        marketPrices = calculatedPrices; // Store for filtering
         updateMarketPricesUI(calculatedPrices);
         updateMarketPricesChart(calculatedPrices);
     }
-  }
-
-  // Fallback market prices when Supabase is unavailable
-  function getFallbackMarketPrices() {
-    return [
-      {
-        crop_type: 'Rice',
-        farm_gate_price: 32.50,
-        retail_price: 45.75,
-        demand: 'High',
-        trend: 'up',
-        trend_percentage: 5,
-        recorded_at: new Date().toISOString()
-      },
-      {
-        crop_type: 'Corn',
-        farm_gate_price: 15.20,
-        retail_price: 22.80,
-        demand: 'Medium',
-        trend: 'stable',
-        trend_percentage: 0,
-        recorded_at: new Date().toISOString()
-      },
-      {
-        crop_type: 'Banana',
-        farm_gate_price: 25.00,
-        retail_price: 35.50,
-        demand: 'Very High',
-        trend: 'up',
-        trend_percentage: 8,
-        recorded_at: new Date().toISOString()
-      },
-      {
-        crop_type: 'Mango',
-        farm_gate_price: 45.00,
-        retail_price: 62.00,
-        demand: 'High',
-        trend: 'up',
-        trend_percentage: 3,
-        recorded_at: new Date().toISOString()
-      },
-      {
-        crop_type: 'Coconut',
-        farm_gate_price: 18.00,
-        retail_price: 28.00,
-        demand: 'Medium',
-        trend: 'down',
-        trend_percentage: 2,
-        recorded_at: new Date().toISOString()
-      },
-      {
-        crop_type: 'Tomato',
-        farm_gate_price: 25.00,
-        retail_price: 38.00,
-        demand: 'High',
-        trend: 'up',
-        trend_percentage: 4,
-        recorded_at: new Date().toISOString()
-      }
-    ];
   }
 
   // FIXED: Price calculation function
@@ -1170,7 +1025,36 @@ body {
     // Check if cropStats is valid
     if (!cropStats || cropStats.length === 0) {
         console.log('💰 DEBUG: No crop stats available');
-        return getFallbackMarketPrices();
+        // Return some sample data for demonstration
+        return [
+            {
+                crop_type: 'rice',
+                farm_gate_price: 32.50,
+                retail_price: 45.75,
+                demand: 'High',
+                trend: 'up',
+                trend_percentage: 5,
+                recorded_at: new Date().toISOString()
+            },
+            {
+                crop_type: 'corn',
+                farm_gate_price: 15.20,
+                retail_price: 22.80,
+                demand: 'Medium',
+                trend: 'stable',
+                trend_percentage: 0,
+                recorded_at: new Date().toISOString()
+            },
+            {
+                crop_type: 'banana',
+                farm_gate_price: 25.00,
+                retail_price: 35.50,
+                demand: 'Very High',
+                trend: 'up',
+                trend_percentage: 8,
+                recorded_at: new Date().toISOString()
+            }
+        ];
     }
     
     // If cropStats is an object, convert it to array
@@ -1497,11 +1381,6 @@ body {
   window.addEventListener('resize', function() {
     if (window.pieChart) window.pieChart.resize();
     if (window.priceChart) window.priceChart.resize();
-    if (window.mapInstance) {
-      setTimeout(function() {
-        window.mapInstance.invalidateSize();
-      }, 100);
-    }
   });
 
   // Update date
@@ -1517,21 +1396,13 @@ body {
 
   function initAgriculturalMap() {
     const mapElement = document.getElementById('maragusanMap');
-    if (!mapElement) {
-      console.log('❌ Map element not found');
-      return;
-    }
-    
-    console.log('🗺️ Initializing map...');
+    if (!mapElement) return;
     
     // Initialize map
     const map = L.map('maragusanMap', {
       preferCanvas: true,
       zoomControl: false
     }).setView([7.3167, 126.1167], 12);
-    
-    // Store map instance globally for resize
-    window.mapInstance = map;
     
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1871,8 +1742,6 @@ body {
         map.setView([7.3167, 126.1167], 12);
       });
     }
-    
-    console.log('✅ Map initialized successfully');
   }
 
   // ============================================================================
@@ -1905,4 +1774,5 @@ body {
 </script>
 
 </body>
-  </html>
+</html>
+
