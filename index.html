@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,7 +25,6 @@
 body {
   font-family: 'Poppins', sans-serif;
   background-color: #f8f9fa;
-  padding-bottom: 80px;
 }
 
 /* Section handling */
@@ -36,103 +35,88 @@ body {
   display: block;
 }
 
-/* BOTTOM TAB BAR */
-.bottom-tab-bar {
+/* Floating menu styles */
+.floating-menu {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: white;
-  box-shadow: 0 -2px 15px rgba(0, 0, 0, 0.1);
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  padding: 8px 0;
-  z-index: 10000;
-  border-top: 1px solid #e5e7eb;
-  height: 72px;
+  bottom: 30px;
+  right: 30px;
+  z-index: 1000;
 }
-
-.tab-item {
+.menu-button {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: #2E7D32;
+  color: white;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  padding: 4px 0;
-  color: #9ca3af;
-  text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: none;
-  background: transparent;
-  font-size: 10px;
-  gap: 2px;
-  position: relative;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
 }
-
-.tab-item i {
-  font-size: 22px;
-  transition: all 0.2s ease;
+.menu-button:hover {
+  background: linear-gradient(to bottom, #2E7D32, 
+  rgba(46, 110, 50, 0.8));
+  transform: scale(1.05);
 }
-
-.tab-item span {
-  font-size: 10px;
-  font-weight: 500;
-  transition: all 0.2s ease;
+.hamburger-line {
+  width: 24px;
+  height: 2px;
+  background-color: white;
+  margin: 3px 0;
+  transition: all 0.3s ease;
 }
-
-.tab-item.active {
-  color: #2E7D32;
+.menu-button.active .hamburger-line:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
 }
-
-.tab-item.active i {
-  transform: scale(1.1);
+.menu-button.active .hamburger-line:nth-child(2) {
+  opacity: 0;
 }
-
-.tab-item.active::after {
-  content: '';
+.menu-button.active .hamburger-line:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+.menu-content {
   position: absolute;
-  top: -1px;
-  left: 30%;
-  right: 30%;
-  height: 3px;
-  background: #2E7D32;
-  border-radius: 0 0 3px 3px;
+  bottom: 70px;
+  right: 0;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  width: 200px;
+  overflow: hidden;
+  transform: scale(0.9);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  transform-origin: bottom right;
 }
-
-.tab-item:hover {
-  color: #2E7D32;
+.menu-content.show {
+  transform: scale(1);
+  opacity: 1;
+  visibility: visible;
 }
-
-/* FAB (Floating Action Button) for Add Farm Data */
-.fab-add {
-  position: fixed;
-  bottom: 90px;
-  right: 20px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2E7D32, #388E3C);
-  color: white;
-  border: none;
-  box-shadow: 0 4px 15px rgba(46, 125, 50, 0.4);
-  cursor: pointer;
+.menu-item {
+  padding: 12px 16px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  transition: all 0.3s ease;
-  z-index: 9999;
+  color: #333;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
-
-.fab-add:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 20px rgba(46, 125, 50, 0.5);
+.menu-item:hover {
+  background-color: #f5f5f5;
+  color: #2E7D32;
 }
-
-.fab-add i {
-  color: white;
+.menu-item i {
+  margin-right: 10px;
+  font-size: 1.1rem;
+}
+.menu-divider {
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 4px 0;
 }
 
 /* Map Section Styles */
@@ -316,10 +300,11 @@ body {
   transition: transform 0.3s ease-in-out;
   z-index: 1000;
   padding: 15px;
+  /* Remove overflow-y from here */
 }
 
 #slidePanel.open {
-  transform: translateY(-450px);
+  transform: translateY(-450px); /* Changed to -450px to match height */
 }
 
 #slidePanelHandle {
@@ -329,14 +314,17 @@ body {
   border-radius: 5px;
   margin: 0 auto 15px;
   cursor: pointer;
+  /* Prevent handle from interfering with scrolling */
   touch-action: none;
 }
 
 #slidePanelContent {
-  height: calc(100% - 30px);
+  height: calc(100% - 30px); /* Adjust if needed */
   overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+  /* Improve scrolling behavior */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+  /* Optional: add padding if content looks cramped */
   padding: 5px;
 }
 /* Barangay Info Styles */
@@ -393,21 +381,6 @@ body {
   margin-right: 5px;
   display: inline-block;
 }
-
-/* Add this to your existing CSS */
-#barangayTitle {
-  cursor: pointer;
-  user-select: none;
-}
-
-/* Fix for market prices dropdown responsiveness */
-#priceCropFilter {
-  cursor: pointer;
-  background-color: white;
-}
-#priceCropFilter option {
-  padding: 8px;
-}
 </style>
 </head>
 <body class="bg-white">
@@ -417,6 +390,31 @@ body {
     <div class="font-['Pacifico'] text-2xl tracking-wide">AgriTrack</div>
   </div>
 </nav>
+
+<!-- Floating Hamburger Menu -->
+<div class="floating-menu">
+  <div class="menu-button" id="menuButton">
+    <div class="hamburger-line"></div>
+    <div class="hamburger-line"></div>
+    <div class="hamburger-line"></div>
+  </div>
+  
+  <div class="menu-content" id="menuContent">
+    <a href="#" class="menu-item active" data-section="home-section">
+      <i class="ri-home-line"></i> Home
+    </a>
+    <a href="#" class="menu-item" data-section="map-section">
+      <i class="ri-map-pin-line"></i> Agricultural Map
+    </a>
+    <a href="#" class="menu-item" data-section="other-section">
+      <i class="ri-price-tag-3-line"></i> Market Prices
+    </a>
+    <div class="menu-divider"></div>
+    <a href="jey.html" class="menu-item">
+      <i class="ri-add-circle-line"></i> Add Farm Data
+    </a>
+  </div>
+</div>
 
 <!-- Main Content Area -->
 <main class="pt-16 px-4">
@@ -434,7 +432,8 @@ body {
 
     <section class="bg-white rounded-lg shadow-md p-5 mb-8">
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold text-gray-800">Top Crops in Maragusan</h2>
+        <h2 class="text-xl font-semibold text-gray-800 padding-30">
+          Top Crops in Maragusan</h2>
       </div>
       <div class="space-y-4" id="cropsContainer">
         <!-- Dynamic content will be loaded here -->
@@ -452,6 +451,30 @@ body {
     <div class="map-controls">
 <select id="barangaySelector">
           <option value="" disabled selected>Select Barangay</option>
+          <option value="Bagong Silang">Bagong Silang</option>
+          <option value="Bahi">Bahi</option>
+          <option value="Cambagang">Cambagang</option>
+          <option value="Coronobe">Coronobe</option>
+          <option value="Katipunan">Katipunan</option>
+          <option value="Langgawisan">Langgawisan</option>
+          <option value="Lahi">Lahi</option>
+          <option id="Mabugnao-btn" value="Mabugnao">Mabugnao</option>
+          <option value="Magcagong">Magcagong</option>
+          <option value="Mahayahay">Mahayahay</option>
+          <option value="Mapawa">Mapawa</option>
+          <option value="Maragusan">Poblacion</option>
+          <option value="Mauswagon">Mauswagon</option>
+          <option value="New Albay">New Albay</option>
+          <option value="New Katipunan">New Katipunan</option>
+          <option value="New Manay">New Manay</option>
+          <option value="New Panay">New Panay</option>
+          <option value="Paloc">Paloc</option>
+          <option value="Pamintaran">Pamintaran</option>
+          <option value="Parasanon">Parasanon</option>
+          <option value="Talian">Talian</option>
+          <option value="Tandik">Tandik</option>
+          <option value="Tigbao">Tigbao</option>
+          <option value="Tupas">Tupas</option>
         </select>
       <button id="resetMap" title="Reset view">
         <i class="ri-refresh-line"></i>
@@ -487,8 +510,8 @@ body {
       <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
         <h2 class="text-xl font-semibold text-gray-800">Market Analytics</h2>
         <div class="flex flex-col sm:flex-row gap-2">
-          <div class="relative flex-1 min-w-[160px]">
-            <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent bg-white">
+          <div class="relative flex-1">
+            <select id="priceCropFilter" class="w-full text-sm border border-gray-300 rounded-button py-2 pl-3 pr-8 appearance-none focus:ring-2 focus:ring-primary focus:border-transparent">
               <option value="pechay">Pechay</option>
 <option value="chinese_cabbage">Chinese Cabbage</option>
 <option value="lettuce">Lettuce</option>
@@ -556,73 +579,29 @@ body {
       </div>
     </div>
   </section>
-</main>
-
-<!-- BOTTOM TAB BAR -->
-<div class="bottom-tab-bar" id="bottomTabBar">
-  <button class="tab-item active" data-section="home-section">
-    <i class="ri-home-line"></i>
-    <span>Home</span>
-  </button>
-  <button class="tab-item" data-section="map-section">
-    <i class="ri-map-pin-line"></i>
-    <span>Map</span>
-  </button>
-  <button class="tab-item" data-section="other-section">
-    <i class="ri-price-tag-3-line"></i>
-    <span>Market</span>
-  </button>
-</div>
-
-<!-- FAB for Add Farm Data -->
-<a href="jey.html" class="fab-add">
-  <i class="ri-add-line"></i>
-</a>
+</main>  
 
 <script>
-  // ============================================================================
-  // SUPABASE CONFIGURATION - FIXED
-  // ============================================================================
-  const SUPABASE_URL = 'https://mqmlffykchrviajwvykj.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
-
-  // Initialize Supabase client properly
-  let supabase = null;
-  
-  try {
-    // Check if supabase is available
-    if (typeof supabaseJs !== 'undefined') {
-      supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
-      console.log('✅ Supabase initialized successfully via supabaseJs');
-    } else if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      console.log('✅ Supabase initialized successfully via window.supabase');
-    } else {
-      console.warn('⚠️ Supabase library not loaded, using fallback data');
-    }
-  } catch (err) {
-    console.error('❌ Failed to initialize Supabase:', err);
-  }
-
   // Application state for real data
   let approvedFarms = [];
-  let cropStatistics = [];
+  let cropStatistics = {};
   let marketPrices = [];
+  let supabase = null;
   
+
   // All available crops from your list
-  const ALL_CROPS = [
+const ALL_CROPS = [
     'banana', 'durian', 'coconut', 'mango', 'pineapple', 'papaya', 'watermelon',
     'rice', 'corn', 'cabbage', 'pechay', 'kangkong', 'spinach', 'tomato',
     'eggplant', 'bell pepper', 'ampalaya', 'sayote', 'squash', 'okra',
     'baguio beans', 'string_beans', 'mung bean', 'peanut', 'carrots', 'radish',
     'sweet potato', 'cassava', 'ginger', 'garlic', 'onion', 'coffee', 'cacao',
     'abaca', 'rubber', 'sugarcane'
-  ];
-
-  // Add this function after your ALL_CROPS array
-  function normalizeBarangayNameForData(barangayName) {
+];
+ // Add this function after your ALL_CROPS array
+function normalizeBarangayNameForData(barangayName) {
     return barangayName.toLowerCase().trim();
-  } 
+} 
 
   function debugBarangayData() {
     console.log('🗺️ DEBUG: Real barangay data:', window.realBarangayData);
@@ -632,8 +611,7 @@ body {
             console.log(`🗺️ ${barangay}:`, data);
         });
     }
-  }
-
+}
   // Crop images mapping
   const CROP_IMAGES = {
     'banana': 'https://cdn-icons-png.flaticon.com/512/2909/2909761.png',
@@ -674,157 +652,49 @@ body {
     'sugarcane': 'https://cdn-icons-png.flaticon.com/512/2158/2158598.png'
   };
 
-  // ============================================================================
-  // FALLBACK DATA - Used when Supabase is not available
-  // ============================================================================
-  const FALLBACK_FARMS = [
-    {
-      id: 1,
-      land_area: 2.5,
-      area_unit: 'hectares',
-      farm_status: 'approved',
-      verified_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      farmers: {
-        id: 1,
-        full_name: 'Juan Dela Cruz',
-        barangay: 'Poblacion'
-      },
-      crops: [
-        { crop_type: 'rice', harvest_yield: 5000, area_planted: 1.5 },
-        { crop_type: 'corn', harvest_yield: 3000, area_planted: 1.0 }
-      ]
-    },
-    {
-      id: 2,
-      land_area: 3.0,
-      area_unit: 'hectares',
-      farm_status: 'approved',
-      verified_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      farmers: {
-        id: 2,
-        full_name: 'Maria Santos',
-        barangay: 'Mapawa'
-      },
-      crops: [
-        { crop_type: 'banana', harvest_yield: 8000, area_planted: 2.0 },
-        { crop_type: 'coconut', harvest_yield: 6000, area_planted: 1.0 }
-      ]
-    },
-    {
-      id: 3,
-      land_area: 4.0,
-      area_unit: 'hectares',
-      farm_status: 'approved',
-      verified_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-      farmers: {
-        id: 3,
-        full_name: 'Pedro Reyes',
-        barangay: 'Bahi'
-      },
-      crops: [
-        { crop_type: 'mango', harvest_yield: 12000, area_planted: 3.0 },
-        { crop_type: 'papaya', harvest_yield: 7000, area_planted: 1.0 }
-      ]
-    }
-  ];
-
-  const FALLBACK_PRICES = [
-    { crop_type: 'rice', farm_gate_price: 32.50, retail_price: 45.75, demand: 'High', trend: 'up', trend_percentage: 5, recorded_at: new Date().toISOString() },
-    { crop_type: 'corn', farm_gate_price: 15.20, retail_price: 22.80, demand: 'Medium', trend: 'stable', trend_percentage: 0, recorded_at: new Date().toISOString() },
-    { crop_type: 'banana', farm_gate_price: 25.00, retail_price: 35.50, demand: 'Very High', trend: 'up', trend_percentage: 8, recorded_at: new Date().toISOString() },
-    { crop_type: 'coconut', farm_gate_price: 18.00, retail_price: 28.00, demand: 'High', trend: 'up', trend_percentage: 3, recorded_at: new Date().toISOString() },
-    { crop_type: 'mango', farm_gate_price: 45.00, retail_price: 65.00, demand: 'Very High', trend: 'up', trend_percentage: 10, recorded_at: new Date().toISOString() }
-  ];
-
   // Initialize application
   document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 AgriTrack Main Page Initializing...');
     
-    // Set up tab navigation
-    setupTabNavigation();
+    // Initialize Supabase Client
+    const supabaseUrl = 'https://mqmlffykchrviajwvykj.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1xbWxmZnlrY2hydmlhand2eWtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwNjM5MTUsImV4cCI6MjA2ODYzOTkxNX0.Dlh4e_dALkEbzZz3hDbiyLb11rMPR0KQPQfHFJx_WmE';
+    supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    
+    console.log('✅ Supabase initialized');
+    
+    // Set first menu item as active
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    document.querySelector('.menu-item[data-section="home-section"]').classList.add('active');
     
     // Initialize the map when map section is accessed
     let mapInitialized = false;
-    document.querySelectorAll('.tab-item[data-section="map-section"]').forEach(tab => {
-      tab.addEventListener('click', function() {
-        if (!mapInitialized) {
-          setTimeout(() => {
-            initAgriculturalMap();
-            mapInitialized = true;
-          }, 100);
-        }
-      });
-    });
-
-    // Load initial data
-    loadApprovedFarmsData();
-    debugDataLoading();
-    loadMarketPricesData();
     
-    // ADDED: Crop filter functionality
-    const priceCropFilter = document.getElementById('priceCropFilter');
-    if (priceCropFilter) {
-        priceCropFilter.addEventListener('change', function() {
-            filterMarketPrices(this.value);
-        });
-    }
-  });
-
-  // ============================================================================
-  // TAB NAVIGATION (replaces hamburger menu)
-  // ============================================================================
-  function setupTabNavigation() {
-    const tabs = document.querySelectorAll('.tab-item');
-    const sections = document.querySelectorAll('.section');
-
-    tabs.forEach(tab => {
-      tab.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        // Remove active from all tabs
-        tabs.forEach(t => t.classList.remove('active'));
-
-        // Hide all sections
-        sections.forEach(s => s.classList.remove('active'));
-
-        // Activate clicked tab
-        this.classList.add('active');
-
-        // Show corresponding section
-        const sectionId = this.getAttribute('data-section');
-        const targetSection = document.getElementById(sectionId);
-        if (targetSection) {
-          targetSection.classList.add('active');
-        }
-
-        // Handle map initialization if needed
-        if (sectionId === 'map-section') {
-          setTimeout(() => {
-            if (window.pieChart) {
-              window.pieChart.resize();
-            }
-          }, 150);
-        } else if (sectionId === 'other-section') {
-          setTimeout(() => {
-            loadMarketPricesData();
-            if (window.priceChart) {
-              window.priceChart.resize();
-            }
-          }, 150);
+    const mapMenuItem = document.querySelector('.menu-item[data-section="map-section"]');
+    if (mapMenuItem) {
+      mapMenuItem.addEventListener('click', function() {
+        if (!mapInitialized) {
+          initAgriculturalMap();
+          mapInitialized = true;
         }
       });
-    });
-  }
+    }
+// Add this debug function and call it after updateBarangayCropData
 
-  // Add this debug function
-  async function debugDataLoading() {
+    
+    // Load initial data
+loadApprovedFarmsData();
+debugDataLoading(); // Add this line
+loadMarketPricesData();
+
+// Add this debug function
+async function debugDataLoading() {
     console.log('🔍 DEBUG: Checking data loading...');
     
     if (!supabase) {
-        console.log('❌ Supabase not initialized, using fallback data');
+        console.log('❌ Supabase not initialized');
         return;
     }
 
@@ -847,7 +717,8 @@ body {
     } catch (error) {
         console.log('🔍 DEBUG: Error in test query:', error);
     }
-  }
+}
+  });
 
   // ============================================================================
   // REAL DATA FUNCTIONS - SUPABASE INTEGRATION
@@ -858,13 +729,8 @@ body {
     console.log('🔍 DEBUG: Starting loadApprovedFarmsData');
     
     if (!supabase) {
-        console.log('❌ DEBUG: Supabase not initialized, using fallback data');
-        // Use fallback data
-        approvedFarms = FALLBACK_FARMS;
-        cropStatistics = processCropData(approvedFarms);
-        updateTopCropsUI(cropStatistics);
-        updateBarangayCropData(approvedFarms);
-        debugBarangayData();
+        console.log('❌ DEBUG: Supabase not initialized yet');
+        updateTopCropsUI([]);
         return;
     }
 
@@ -896,40 +762,30 @@ body {
 
         if (error) {
             console.error('❌ DEBUG: Error fetching approved farms:', error);
-            console.log('🔄 Using fallback data due to error');
-            approvedFarms = FALLBACK_FARMS;
-            cropStatistics = processCropData(approvedFarms);
-            updateTopCropsUI(cropStatistics);
-            updateBarangayCropData(approvedFarms);
+            updateTopCropsUI([]);
             return;
         }
 
-        if (farms && farms.length > 0) {
-          console.log('🔍 DEBUG: Processing crop data...');
-          approvedFarms = farms;
-          cropStatistics = processCropData(approvedFarms);
-          console.log('🔍 DEBUG: cropStatistics after processing:', cropStatistics);
-          updateTopCropsUI(cropStatistics);
-          updateBarangayCropData(approvedFarms);
-          debugBarangayData();
-        } else {
-            console.log('🔍 DEBUG: No approved farms found, using fallback');
-            approvedFarms = FALLBACK_FARMS;
-            cropStatistics = processCropData(approvedFarms);
-            updateTopCropsUI(cropStatistics);
-            updateBarangayCropData(approvedFarms);
+        console.log('🔍 DEBUG: Setting approvedFarms to:', farms);
+        approvedFarms = farms || [];
+
+        if (approvedFarms.length > 0) {
+    console.log('🔍 DEBUG: Processing crop data...');
+    cropStatistics = processCropData(approvedFarms);
+    console.log('🔍 DEBUG: cropStatistics after processing:', cropStatistics);
+    updateTopCropsUI(cropStatistics);
+    updateBarangayCropData(approvedFarms);
+    debugBarangayData(); // ADD THIS LINE
+} else {
+            console.log('🔍 DEBUG: No approved farms found');
+            updateTopCropsUI([]);
         }
         
     } catch (error) {
         console.error('❌ DEBUG: Error loading approved farms:', error);
-        console.log('🔄 Using fallback data due to error');
-        approvedFarms = FALLBACK_FARMS;
-        cropStatistics = processCropData(approvedFarms);
-        updateTopCropsUI(cropStatistics);
-        updateBarangayCropData(approvedFarms);
+        updateTopCropsUI([]);
     }
-  }
-
+}
   // Process real farm data into crop statistics
   function processCropData(farms) {
     console.log('🔍 DEBUG: processCropData received farms:', farms);
@@ -952,15 +808,15 @@ body {
     farms.forEach(farm => {
         if (farm.crops && farm.crops.length > 0) {
             farm.crops.forEach(crop => {
-                const cropType = crop.crop_type || 'Unknown';
-                
-                console.log('🔍 DEBUG: Checking crop:', cropType, 'in ALL_CROPS?', ALL_CROPS.includes(cropType));
-                
-                // Only process crops from our defined list
-                if (!ALL_CROPS.includes(cropType)) {
-                    console.log('🔍 DEBUG: Skipping crop:', cropType);
-                    return;
-                }
+    const cropType = crop.crop_type || 'Unknown';
+    
+    console.log('🔍 DEBUG: Checking crop:', cropType, 'in ALL_CROPS?', ALL_CROPS.includes(cropType));
+    
+    // Only process crops from our defined list
+    if (!ALL_CROPS.includes(cropType)) {
+        console.log('🔍 DEBUG: Skipping crop:', cropType);
+        return;
+    }
                 
                 if (!cropStats[cropType]) {
                     cropStats[cropType] = {
@@ -982,7 +838,7 @@ body {
         }
     });
 
-    console.log('🔍 DEBUG: cropStats object before conversion:', cropStats);
+        console.log('🔍 DEBUG: cropStats object before conversion:', cropStats);
     
     // Convert to array and return
     const result = Object.values(cropStats)
@@ -1000,10 +856,11 @@ body {
     
     console.log('🔍 DEBUG: Final result array:', result);
     return result;
-  }
+}
 
   // Update barangay crop data for the map with real data
-  function updateBarangayCropData(farms) {
+  // Update barangay crop data for the map with real data
+function updateBarangayCropData(farms) {
     const barangayData = {};
     
     farms.forEach(farm => {
@@ -1038,88 +895,74 @@ body {
     
     window.realBarangayData = barangayData;
     console.log('🗺️ Updated barangay data with real farms:', barangayData);
-  }
+}
 
-  // FIXED: Load market prices data
+  // Load market prices data
   async function loadMarketPricesData() {
-    console.log('💰 DEBUG: Starting loadMarketPricesData');
-    
     try {
         if (!supabase) {
-            console.log('💰 DEBUG: No Supabase, using fallback data');
-            marketPrices = FALLBACK_PRICES;
-            updateMarketPricesUI(FALLBACK_PRICES);
-            updateMarketPricesChart(FALLBACK_PRICES);
+            // If no supabase, calculate from crop statistics
+            const cropStatsArray = cropStatistics ? Object.values(cropStatistics) : [];
+            const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
+            updateMarketPricesUI(calculatedPrices);
+            updateMarketPricesChart(calculatedPrices);
             return;
         }
 
-        console.log('💰 DEBUG: Querying Supabase for market prices...');
         const { data: prices, error } = await supabase
             .from('market_prices')
             .select('*')
             .order('recorded_at', { ascending: false })
             .limit(20);
 
-        console.log('💰 DEBUG: Supabase prices result:', prices);
-        console.log('💰 DEBUG: Supabase prices error:', error);
-
         if (error || !prices || prices.length === 0) {
-            console.log('💰 DEBUG: No market prices, using fallback');
-            marketPrices = FALLBACK_PRICES;
-            updateMarketPricesUI(FALLBACK_PRICES);
-            updateMarketPricesChart(FALLBACK_PRICES);
+            // Calculate prices from crop data if no market prices available
+            const cropStatsArray = cropStatistics ? Object.values(cropStatistics) : [];
+            const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
+            updateMarketPricesUI(calculatedPrices);
+            updateMarketPricesChart(calculatedPrices);
         } else {
-            console.log('💰 DEBUG: Using Supabase prices data');
             // Filter prices to only include our defined crops
             const filteredPrices = prices.filter(price => 
                 ALL_CROPS.includes(price.crop_type)
             );
-            
-            // If filtered prices are empty, use fallback
-            if (filteredPrices.length === 0) {
-                console.log('💰 DEBUG: No matching crops in prices, using fallback');
-                marketPrices = FALLBACK_PRICES;
-                updateMarketPricesUI(FALLBACK_PRICES);
-                updateMarketPricesChart(FALLBACK_PRICES);
-            } else {
-                marketPrices = filteredPrices;
-                updateMarketPricesUI(filteredPrices);
-                updateMarketPricesChart(filteredPrices);
-            }
+            updateMarketPricesUI(filteredPrices);
+            updateMarketPricesChart(filteredPrices);
         }
         
     } catch (error) {
         console.error('❌ Error loading market prices:', error);
-        console.log('🔄 Using fallback data due to error');
-        marketPrices = FALLBACK_PRICES;
-        updateMarketPricesUI(FALLBACK_PRICES);
-        updateMarketPricesChart(FALLBACK_PRICES);
+        // Calculate prices from crop data as fallback
+        const cropStatsArray = cropStatistics ? Object.values(cropStatistics) : [];
+        const calculatedPrices = calculateMarketPricesFromCrops(cropStatsArray);
+        updateMarketPricesUI(calculatedPrices);
+        updateMarketPricesChart(calculatedPrices);
     }
-  }
+}
 
-  // ADDED: Filter market prices function
-  function filterMarketPrices(selectedCrop) {
-    console.log('💰 DEBUG: Filtering market prices for:', selectedCrop);
-    
-    if (!marketPrices || marketPrices.length === 0) {
-        console.log('💰 DEBUG: No market prices to filter, loading data...');
-        loadMarketPricesData();
-        return;
+ function calculateMarketPricesFromCrops(cropStats) {
+    // Check if cropStats is valid and convert object to array if needed
+    if (!cropStats) {
+        return [];
     }
     
-    let filteredPrices;
-    if (selectedCrop === 'all' || !selectedCrop) {
-        filteredPrices = marketPrices;
-    } else {
-        filteredPrices = marketPrices.filter(price => 
-            price.crop_type.toLowerCase() === selectedCrop.toLowerCase()
-        );
+    // If cropStats is an object, convert it to array
+    const cropsArray = Array.isArray(cropStats) ? cropStats : Object.values(cropStats);
+    
+    if (!cropsArray || cropsArray.length === 0) {
+        return [];
     }
     
-    console.log('💰 DEBUG: Filtered prices:', filteredPrices);
-    updateMarketPricesUI(filteredPrices);
-    updateMarketPricesChart(filteredPrices);
-  }
+    return cropsArray.map(crop => ({
+        crop_type: crop.crop_type,
+        farm_gate_price: crop.estimated_farm_gate || calculateFarmGatePrice(crop.crop_type, crop.total_yield || 0),
+        retail_price: crop.estimated_retail || calculateRetailPrice(crop.crop_type, crop.total_yield || 0),
+        demand: crop.demand_level || calculateDemandLevel(crop.total_yield || 0),
+        trend: crop.trend?.direction || calculateTrend(crop.crop_type).direction,
+        trend_percentage: crop.trend?.percentage || calculateTrend(crop.crop_type).percentage,
+        recorded_at: new Date().toISOString()
+    }));
+}
 
   // ============================================================================
   // UI UPDATE FUNCTIONS
@@ -1178,39 +1021,31 @@ body {
     });
   }
 
-  // FIXED: Update market prices UI with better debugging
+  // Update market prices UI
   function updateMarketPricesUI(pricesData) {
     const tableBody = document.getElementById('priceTableBody');
-    if (!tableBody) {
-        console.log('💰 DEBUG: priceTableBody not found');
-        return;
-    }
-    
-    console.log('💰 DEBUG: updateMarketPricesUI received:', pricesData);
+    if (!tableBody) return;
     
     tableBody.innerHTML = '';
     
     if (!pricesData || pricesData.length === 0) {
-        console.log('💰 DEBUG: No prices data to display');
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                     <i class="ri-information-line text-2xl mb-2 block"></i>
-                    No market data available yet. Data will appear once farms are approved.
+                    No market data available
                 </td>
             </tr>
         `;
         return;
     }
     
-    console.log('💰 DEBUG: Displaying', pricesData.length, 'price records');
-    
     pricesData.forEach(price => {
         const row = `
             <tr class="hover:bg-gray-50">
-                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 capitalize">${price.crop_type}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">₱${(price.farm_gate_price || 0).toFixed(2)}</td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">₱${(price.retail_price || 0).toFixed(2)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">${price.crop_type}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">${price.farm_gate_price.toFixed(2)}</td>
+                <td class="px-4 py-3 whitespace-nowrap text-sm text-right">${price.retail_price.toFixed(2)}</td>
                 <td class="px-4 py-3 whitespace-nowrap text-right">
                     <span class="px-2 py-1 text-xs rounded-full ${getDemandColorClass(price.demand)}">${price.demand}</span>
                 </td>
@@ -1226,7 +1061,6 @@ body {
         tableBody.innerHTML += row;
     });
     
-    // Update the date
     if (pricesData.length > 0) {
         const latestDate = new Date(pricesData[0].recorded_at || new Date());
         const priceUpdateDateElement = document.getElementById('priceUpdateDate');
@@ -1237,66 +1071,36 @@ body {
     }
   }
 
-  // FIXED: Update market prices chart
+  // Update market prices chart
   function updateMarketPricesChart(pricesData) {
     const chartElement = document.getElementById('otherCropsChart');
-    if (!chartElement) {
-        console.log('💰 DEBUG: Chart element not found');
-        return;
-    }
+    if (!chartElement) return;
     
-    console.log('💰 DEBUG: updateMarketPricesChart data:', pricesData);
-    
-    // Use all available data or top 6
     const topCrops = pricesData.slice(0, 6);
     const crops = topCrops.map(price => price.crop_type);
     const farmGatePrices = topCrops.map(price => price.farm_gate_price);
     const retailPrices = topCrops.map(price => price.retail_price);
     
-    console.log('💰 DEBUG: Chart data - crops:', crops);
-    console.log('💰 DEBUG: Chart data - farmGate:', farmGatePrices);
-    console.log('💰 DEBUG: Chart data - retail:', retailPrices);
-    
-    // Initialize chart if it doesn't exist
     if (!window.priceChart) {
         window.priceChart = echarts.init(chartElement);
-        console.log('💰 DEBUG: Price chart initialized');
     }
     
-    const option = {
+    window.priceChart.setOption({
         tooltip: {
             trigger: 'axis',
-            formatter: function(params) {
-                return `
-                    <strong>${params[0].name}</strong><br/>
-                    Farm Gate: ₱${params[0].value?.toFixed(2) || '0.00'}<br/>
-                    Retail: ₱${params[1].value?.toFixed(2) || '0.00'}
-                `;
-            }
+            formatter: params => `
+                <strong>${params[0].name}</strong><br/>
+                Farm Gate: ₱${params[0].value}<br/>
+                Retail: ₱${params[1].value}
+            `
         },
-        legend: { 
-            data: ['Farm Gate Price', 'Retail Price'], 
-            bottom: 0 
-        },
-        grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '15%',
-            top: '3%',
-            containLabel: true
-        },
+        legend: { data: ['Farm Gate Price', 'Retail Price'], bottom: 0 },
         xAxis: {
             type: 'category',
             data: crops,
-            axisLabel: { 
-                interval: 0, 
-                rotate: crops.length > 4 ? 45 : 0 
-            }
+            axisLabel: { interval: 0, rotate: crops.length > 4 ? 45 : 0 }
         },
-        yAxis: { 
-            type: 'value', 
-            name: 'Price (₱)' 
-        },
+        yAxis: { type: 'value', name: 'Price (₱)' },
         series: [
             {
                 name: 'Farm Gate Price',
@@ -1311,10 +1115,7 @@ body {
                 itemStyle: { color: '#81C784' }
             }
         ]
-    };
-    
-    window.priceChart.setOption(option);
-    console.log('💰 DEBUG: Chart option set');
+    });
   }
 
   // ============================================================================
@@ -1322,10 +1123,10 @@ body {
   // ============================================================================
 
   function calculateDemandLevel(yieldAmount) {
-    if (yieldAmount < 5000000) return 'Very High';
-    if (yieldAmount < 2500000) return 'High';
-    if (yieldAmount < 1000000) return 'Medium';
-    if (yieldAmount < 500000) return 'Low';
+    if (yieldAmount > 5000000) return 'Very High';
+    if (yieldAmount > 2500000) return 'High';
+    if (yieldAmount > 1000000) return 'Medium';
+    if (yieldAmount > 500000) return 'Low';
     return 'Very Low';
   }
 
@@ -1342,14 +1143,14 @@ body {
 
   function calculateFarmGatePrice(cropType, yieldAmount) {
     const basePrices = {
-        'banana': 25, 'durian': 80, 'coconut': 18, 'mango': 45, 'pineapple': 35,
-        'papaya': 20, 'watermelon': 15, 'rice': 32, 'corn': 15, 'cabbage': 18,
-        'pechay': 12, 'kangkong': 10, 'spinach': 15, 'tomato': 25, 'eggplant': 20,
-        'bell pepper': 30, 'ampalaya': 18, 'sayote': 12, 'squash': 15, 'okra': 22,
-        'baguio beans': 28, 'string_beans': 20, 'mung bean': 25, 'peanut': 35,
-        'carrots': 22, 'radish': 15, 'sweet potato': 18, 'cassava': 12, 'ginger': 40,
-        'garlic': 60, 'onion': 35, 'coffee': 120, 'cacao': 90, 'abaca': 25,
-        'rubber': 30, 'sugarcane': 15
+        'Banana': 25, 'Durian': 80, 'Coconut': 18, 'Mango': 45, 'Pineapple': 35,
+        'Papaya': 20, 'Watermelon': 15, 'Rice': 32, 'Corn': 15, 'Cabbage': 18,
+        'Petchay': 12, 'Kangkong': 10, 'Spinach': 15, 'Tomato': 25, 'Eggplant': 20,
+        'Bell Pepper': 30, 'Ampalaya': 18, 'Sayote': 12, 'Squash': 15, 'Okra': 22,
+        'Baguio Beans': 28, 'String Beans': 20, 'Mung Bean': 25, 'Peanut': 35,
+        'Carrots': 22, 'Radish': 15, 'Sweet Potato': 18, 'Cassava': 12, 'Ginger': 40,
+        'Garlic': 60, 'Onion': 35, 'Coffee': 120, 'Cacao': 90, 'Abaca': 25,
+        'Rubber': 30, 'Sugarcane': 15
     };
     
     const basePrice = basePrices[cropType] || 20;
@@ -1402,6 +1203,64 @@ body {
     return 'https://cdn-icons-png.flaticon.com/512/17866/17866804.png';
   }
 
+  // ============================================================================
+  // MENU AND NAVIGATION
+  // ============================================================================
+
+  const menuButton = document.getElementById('menuButton');
+  const menuContent = document.getElementById('menuContent');
+
+  if (menuButton && menuContent) {
+    menuButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      menuButton.classList.toggle('active');
+      menuContent.classList.toggle('show');
+    });
+
+    document.addEventListener('click', function() {
+      menuButton.classList.remove('active');
+      menuContent.classList.remove('show');
+    });
+
+    menuContent.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+  }
+
+  const menuItems = document.querySelectorAll('.menu-item[data-section]');
+  const sections = document.querySelectorAll('.section');
+
+  menuItems.forEach(item => {
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      menuItems.forEach(btn => btn.classList.remove('active'));
+      sections.forEach(section => section.classList.remove('active'));
+      
+      this.classList.add('active');
+      const sectionId = this.getAttribute('data-section');
+      const sectionElement = document.getElementById(sectionId);
+      if (sectionElement) {
+        sectionElement.classList.add('active');
+      }
+      
+      if (menuButton && menuContent) {
+        menuButton.classList.remove('active');
+        menuContent.classList.remove('show');
+      }
+      
+      if (sectionId === 'map-section' && window.pieChart) {
+        setTimeout(() => {
+          window.pieChart.resize();
+        }, 100);
+      } else if (sectionId === 'other-section' && window.priceChart) {
+        setTimeout(() => {
+          window.priceChart.resize();
+        }, 100);
+      }
+    });
+  });
+
   window.addEventListener('resize', function() {
     if (window.pieChart) window.pieChart.resize();
     if (window.priceChart) window.priceChart.resize();
@@ -1412,6 +1271,15 @@ body {
   if (priceUpdateDateElement) {
     priceUpdateDateElement.textContent = 
       new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  // Login button
+  const loginButton = document.getElementById('loginBtn');
+  if (loginButton) {
+    loginButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      window.location.href = "jey.html";
+    });
   }
 
   // ============================================================================
@@ -1471,6 +1339,7 @@ body {
     ]
     };
 
+
     // Store the GeoJSON layer reference
     let geojsonLayer = null;
     
@@ -1502,16 +1371,16 @@ body {
     }
 
     function onEachFeature(feature, layer) {
-      layer.on({
-          mouseover: highlightFeature,
-          mouseout: resetHighlight,
-          click: function(e) {
-              showBarangay(feature);
-              const selector = document.getElementById('barangaySelector');
-              if (selector) selector.value = feature.properties.adm4_en;
-          }
-      });
-    }
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        click: function(e) {
+            showBarangay(feature);
+            const selector = document.getElementById('barangaySelector');
+            if (selector) selector.value = feature.properties.adm4_en.toLowerCase(); // ← CHANGED
+        }
+    });
+}
 
     // Function to show a single barangay
     function showBarangay(feature) {
@@ -1543,77 +1412,79 @@ body {
     }
 
     // Function to show REAL crop data for a barangay
-    function showCropData(barangayName) {
-      // Normalize the barangay name to lowercase for matching with database
-      const normalizedBarangayName = normalizeBarangayNameForData(barangayName);
-      
-      // Use real data from approved farms
-      const realData = window.realBarangayData?.[normalizedBarangayName];
-      
-      console.log('📊 DEBUG showCropData: Barangay:', barangayName, 'Normalized:', normalizedBarangayName);
-      console.log('📊 DEBUG showCropData: realData available?', !!realData);
-      console.log('📊 DEBUG showCropData: realData content:', realData);
-      
-      const data = realData ? convertRealDataToPieData(realData) : getFallbackBarangayData(barangayName);
-      
-      console.log('📊 DEBUG showCropData: Final pie chart data:', data);
-      
-      // Update title
-      const barangayTitleElement = document.getElementById('barangayTitle');
-      if (barangayTitleElement) {
-          barangayTitleElement.textContent = barangayName;
-      }
-      
-      // Update statistics with REAL data
-      if (realData) {
-          document.getElementById('barangayArea').textContent = Math.round(realData.totalArea) + ' ha';
-          document.getElementById('barangayPopulation').textContent = realData.totalFarms + ' farms';
-      } else {
-          document.getElementById('barangayArea').textContent = '--';
-          document.getElementById('barangayPopulation').textContent = '--';
-      }
-      
-      // Update pie chart
-      if (window.pieChart) {
-          const chartData = data.map(item => ({
-              value: item.percentage,
-              name: item.crop,
-              itemStyle: { color: item.color }
-          }));
-          
-          console.log('📊 DEBUG showCropData: Chart data sent to pie chart:', chartData);
-          
-          window.pieChart.setOption({
-              tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
-              series: [{
-                  name: 'Crop Distribution',
-                  type: 'pie',
-                  radius: ['45%', '70%'],
-                  avoidLabelOverlap: false,
-                  itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
-                  label: { show: false, position: 'center' },
-                  emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
-                  labelLine: { show: false },
-                  data: chartData
-              }]
-          });
-      }
-      
-      // Update legend
-      const legendElement = document.getElementById('cropLegend');
-      if (legendElement) {
-          const legendHtml = data.map(item => `
-              <div class="crop-legend-item">
-                  <span class="crop-legend-color" style="background-color:${item.color}"></span>
-                  <span>${item.crop} (${item.percentage}%)</span>
-              </div>
-          `).join('');
-          legendElement.innerHTML = legendHtml;
-      }
+    // Function to show REAL crop data for a barangay
+// Function to show REAL crop data for a barangay
+function showCropData(barangayName) {
+    // Normalize the barangay name to lowercase for matching with database
+    const normalizedBarangayName = normalizeBarangayNameForData(barangayName);
+    
+    // Use real data from approved farms
+    const realData = window.realBarangayData?.[normalizedBarangayName];
+    
+    console.log('📊 DEBUG showCropData: Barangay:', barangayName, 'Normalized:', normalizedBarangayName);
+    console.log('📊 DEBUG showCropData: realData available?', !!realData);
+    console.log('📊 DEBUG showCropData: realData content:', realData);
+    
+    const data = realData ? convertRealDataToPieData(realData) : getFallbackBarangayData(barangayName);
+    
+    console.log('📊 DEBUG showCropData: Final pie chart data:', data);
+    
+    // Update title
+    const barangayTitleElement = document.getElementById('barangayTitle');
+    if (barangayTitleElement) {
+        barangayTitleElement.textContent = barangayName;
     }
+    
+    // Update statistics with REAL data
+    if (realData) {
+        document.getElementById('barangayArea').textContent = Math.round(realData.totalArea) + ' ha';
+        document.getElementById('barangayPopulation').textContent = realData.totalFarms + ' farms';
+    } else {
+        document.getElementById('barangayArea').textContent = '--';
+        document.getElementById('barangayPopulation').textContent = '--';
+    }
+    
+    // Update pie chart
+    if (window.pieChart) {
+        const chartData = data.map(item => ({
+            value: item.percentage,
+            name: item.crop,
+            itemStyle: { color: item.color }
+        }));
+        
+        console.log('📊 DEBUG showCropData: Chart data sent to pie chart:', chartData);
+        
+        window.pieChart.setOption({
+            tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+            series: [{
+                name: 'Crop Distribution',
+                type: 'pie',
+                radius: ['45%', '70%'],
+                avoidLabelOverlap: false,
+                itemStyle: { borderRadius: 5, borderColor: '#fff', borderWidth: 2 },
+                label: { show: false, position: 'center' },
+                emphasis: { label: { show: true, fontSize: '14', fontWeight: 'bold' } },
+                labelLine: { show: false },
+                data: chartData
+            }]
+        });
+    }
+    
+    // Update legend
+    const legendElement = document.getElementById('cropLegend');
+    if (legendElement) {
+        const legendHtml = data.map(item => `
+            <div class="crop-legend-item">
+                <span class="crop-legend-color" style="background-color:${item.color}"></span>
+                <span>${item.crop} (${item.percentage}%)</span>
+            </div>
+        `).join('');
+        legendElement.innerHTML = legendHtml;
+    }
+}
 
     // Convert real barangay data to pie chart format
-    function convertRealDataToPieData(realBarangayData) {
+   function convertRealDataToPieData(realBarangayData) {
       // ADD DEBUG LINES:
       console.log('📊 DEBUG convertRealDataToPieData: Input:', realBarangayData);
       
@@ -1643,21 +1514,21 @@ body {
       return result;
     }
 
-    function getCropColor(cropType) {
-      const colorMap = {
-          'banana': '#2E7D32', 'durian': '#4CAF50', 'coconut': '#795548', 'mango': '#FF9800',
-          'pineapple': '#FFC107', 'papaya': '#FF5722', 'watermelon': '#F44336', 'rice': '#FFEB3B',
-          'corn': '#FF9800', 'cabbage': '#8BC34A', 'pechay': '#689F38', 'kangkong': '#4CAF50',
-          'spinach': '#388E3C', 'tomato': '#F44336', 'eggplant': '#9C27B0', 'bell pepper': '#FF5722',
-          'ampalaya': '#795548', 'sayote': '#8BC34A', 'squash': '#FF9800', 'okra': '#4CAF50',
-          'baguio beans': '#689F38', 'string_beans': '#8BC34A', 'mung bean': '#CDDC39', 'peanut': '#795548',
-          'carrots': '#FF9800', 'radish': '#F44336', 'sweet potato': '#FF5722', 'cassava': '#795548',
-          'ginger': '#FF9800', 'garlic': '#9E9E9E', 'onion': '#9C27B0', 'coffee': '#5D4037',
-          'cacao': '#6D4C41', 'abaca': '#795548', 'rubber': '#5D4037', 'sugarcane': '#795548'
-      };
-      
-      return colorMap[cropType] || '#' + Math.floor(Math.random()*16777215).toString(16);
-    }
+   function getCropColor(cropType) {
+    const colorMap = {
+        'banana': '#2E7D32', 'durian': '#4CAF50', 'coconut': '#795548', 'mango': '#FF9800',
+        'pineapple': '#FFC107', 'papaya': '#FF5722', 'watermelon': '#F44336', 'rice': '#FFEB3B',
+        'corn': '#FF9800', 'cabbage': '#8BC34A', 'pechay': '#689F38', 'kangkong': '#4CAF50',
+        'spinach': '#388E3C', 'tomato': '#F44336', 'eggplant': '#9C27B0', 'bell pepper': '#FF5722',
+        'ampalaya': '#795548', 'sayote': '#8BC34A', 'squash': '#FF9800', 'okra': '#4CAF50',
+        'baguio beans': '#689F38', 'string_beans': '#8BC34A', 'mung bean': '#CDDC39', 'peanut': '#795548',
+        'carrots': '#FF9800', 'radish': '#F44336', 'sweet potato': '#FF5722', 'cassava': '#795548',
+        'ginger': '#FF9800', 'garlic': '#9E9E9E', 'onion': '#9C27B0', 'coffee': '#5D4037',
+        'cacao': '#6D4C41', 'abaca': '#795548', 'rubber': '#5D4037', 'sugarcane': '#795548'
+    };
+    
+    return colorMap[cropType] || '#' + Math.floor(Math.random()*16777215).toString(16);
+}
 
     function getFallbackBarangayData(barangayName) {
       return [
@@ -1669,73 +1540,62 @@ body {
     const slidePanel = document.getElementById('slidePanel');
     const slidePanelHandle = document.getElementById('slidePanelHandle');
     let isPanelOpen = false;
-
+    
     function openSlidePanel() {
-        if (slidePanel) slidePanel.classList.add('open');
-        isPanelOpen = true;
+      if (slidePanel) slidePanel.classList.add('open');
+      isPanelOpen = true;
     }
-
+    
     function closeSlidePanel() {
-        if (slidePanel) slidePanel.classList.remove('open');
-        isPanelOpen = false;
+      if (slidePanel) slidePanel.classList.remove('open');
+      isPanelOpen = false;
     }
-
+    
     function toggleSlidePanel() {
-        if (isPanelOpen) {
-            closeSlidePanel();
-        } else {
-            openSlidePanel();
-        }
+      if (isPanelOpen) {
+        closeSlidePanel();
+      } else {
+        openSlidePanel();
+      }
     }
-
-    // Make the entire header area clickable
-    const barangayTitle = document.getElementById('barangayTitle');
-    if (barangayTitle) {
-        barangayTitle.style.cursor = 'pointer';
-        barangayTitle.addEventListener('click', toggleSlidePanel);
-    }
-
-    // Handle click
+    
+    // Add click handler to the panel handle
     if (slidePanelHandle) {
-        slidePanelHandle.addEventListener('click', toggleSlidePanel);
+      slidePanelHandle.addEventListener('click', toggleSlidePanel);
     }
-
-    // Enhanced touch handling
+    
+    // Add swipe functionality for touch devices
     if (slidePanel) {
-        let touchStartY = 0;
-        
-        slidePanel.addEventListener('touchstart', function(e) {
-            touchStartY = e.touches[0].clientY;
-        });
-        
-        slidePanel.addEventListener('touchend', function(e) {
-            const touchEndY = e.changedTouches[0].clientY;
-            const swipeDistance = touchEndY - touchStartY;
-            
-            if (Math.abs(swipeDistance) > 20) { // Swipe threshold
-                if (swipeDistance > 0 && isPanelOpen) {
-                    closeSlidePanel(); // Swipe down
-                } else if (swipeDistance < 0 && !isPanelOpen) {
-                    openSlidePanel(); // Swipe up
-                }
-            }
-        });
+      let touchStartY = 0;
+      let touchEndY = 0;
+      
+      slidePanel.addEventListener('touchstart', function(e) {
+        touchStartY = e.changedTouches[0].screenY;
+      }, false);
+      
+      slidePanel.addEventListener('touchend', function(e) {
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+      }, false);
+      
+      function handleSwipe() {
+        if (touchEndY - touchStartY > 50 && isPanelOpen) {
+          closeSlidePanel();
+        } else if (touchStartY - touchEndY > 50 && !isPanelOpen) {
+          openSlidePanel();
+        }
+      }
     }
 
     // Populate barangay selector
     const selector = document.getElementById('barangaySelector');
     if (selector) {
-      // Clear existing options except first
-      while (selector.options.length > 1) {
-        selector.remove(1);
-      }
-      
-      maragusanGeoJSON.features.forEach(feature => {
-        const option = document.createElement('option');
-        option.value = feature.properties.adm4_en;
-        option.textContent = feature.properties.adm4_en;
-        selector.appendChild(option);
-      });
+     maragusanGeoJSON.features.forEach(feature => {
+    const option = document.createElement('option');
+    option.value = feature.properties.adm4_en.toLowerCase(); // ← CHANGED
+    option.textContent = feature.properties.adm4_en;
+    selector.appendChild(option);
+});
 
       // Barangay selector change handler
       selector.addEventListener('change', function() {
@@ -1796,6 +1656,5 @@ body {
     };
   };
 </script>
-
 </body>
-  </html>
+    </html>
